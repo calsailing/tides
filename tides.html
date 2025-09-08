@@ -102,7 +102,8 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- CONFIGURATION ---
-            const initialDate = new Date(); // Load the chart for the current browser date
+            // Set to the specific date and time for our sailing scenario.
+            const initialDate = new Date('2025-09-08T12:29:00-07:00'); // Monday, Sept 8, 2025, 12:29 PM PDT
             const DANGEROUS_LOW_TIDE = 1.5; // in feet
 
             // --- STATE ---
@@ -188,12 +189,111 @@
                 return extremes;
             }
 
+            async function fetchClubStatus(date) {
+                const yyyymmdd = date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
+                const originalUrl = `https://www.cal-sailing.org/index.php?option=com_csctides&view=gettidedatalist&task=gettidedatalist&tmpl=component&output=json&tidedate=${yyyymmdd}`;
+                const url = `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`;
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Cal Sailing API request failed: ${response.statusText}`);
+                    
+                    const rawText = await response.text();
+                    // Clean potential HTML tags wrapping the JSON
+                    const jsonString = rawText.replace(/<pre.*?>|<\/pre>/g, '');
+                    const responseData = JSON.parse(jsonString);
+
+                    // *** FIX: Access the nested 'data' object ***
+                    const clubData = responseData.data;
+                    if (!clubData) {
+                        throw new Error("Malformed club status JSON: 'data' property is missing.");
+                    }
+
+                    const parseClubTime = (timeStr) => {
+                        if (!timeStr) return null;
+                        timeStr = timeStr.toLowerCase().trim();
+
+                        if (timeStr === 'sunset') return 'sunset';
+                        
+                        const d = new Date(date);
+                        if (timeStr === 'noon') {
+                            d.setHours(12, 0, 0, 0);
+                            return d;
+                        }
+
+                        const pm = timeStr.includes('pm');
+                        const parts = timeStr.replace(/am|pm/i, '').trim().split(':');
+                        let hours = parseInt(parts[0], 10);
+                        const minutes = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+
+                        if (isNaN(hours) || isNaN(minutes)) return null;
+
+                        if (pm && hours < 12) hours += 12;
+                        else if (!pm && hours === 12) hours = 0; // Handle 12am
+                        
+                        d.setHours(hours, minutes, 0, 0);
+                        return d;
+                    };
+                    
+                    // Handle boolean or string from API
+                    const isClosed = clubData.clubclosed === true || clubData.clubclosed === 'true';
+                    if (isClosed) {
+                        return { isClosed: true, alertMessage: 'Club Closed Due To Tide' };
+                    }
+
+                    const openTime = parseClubTime(clubData.opentime);
+                    const dockTime = parseClubTime(clubData.docktime);
+                    let midDayDockTime = null;
+                    let midDayOpenTime = null;
+                    
+                    const alerts = new Set();
+                    
+                    // Check for restrictions like Early Close or Late Open
+                    if (clubData.restriction) {
+                        if (clubData.restriction.toUpperCase().includes('EARLY CLOSE')) {
+                            alerts.add('Early Close Due To Tide');
+                        }
+                        if (clubData.restriction.toUpperCase().includes('LATE OPEN')) {
+                            alerts.add('Late Open Due To Tide');
+                        }
+                    }
+
+                    // Check for mid-day closure
+                    if (clubData.middayclosetext && clubData.middayclosetext !== 'null') {
+                        alerts.add('Mid-Day Closure Due To Tide');
+                        const times = clubData.middayclosetext.match(/(\d{1,2}:\d{2}\s*(am|pm))/gi);
+                        if (times && times.length >= 2) {
+                            midDayDockTime = parseClubTime(times[0]);
+                            midDayOpenTime = parseClubTime(times[1]);
+                        }
+                    }
+
+                    const alertMessage = Array.from(alerts).join(' & ');
+
+                    return {
+                        isClosed: false,
+                        openTime,
+                        dockTime,
+                        midDayDockTime,
+                        midDayOpenTime,
+                        alertMessage
+                    };
+
+                } catch (error) {
+                    console.error("Failed to fetch or parse club status:", error);
+                    return { isClosed: true, alertMessage: 'Could not load club status' };
+                }
+            }
+
             async function drawChart() {
                 chartContainer.html("<div class='text-gray-500 flex items-center justify-center h-full'>Loading tide data...</div>");
                 clubStatusAlert.textContent = '';
                 eventsList.innerHTML = '';
 
-                const [currentTides] = await Promise.all([fetchTideData(currentDate)]);
+                const [currentTides, clubStatus] = await Promise.all([
+                    fetchTideData(currentDate),
+                    fetchClubStatus(currentDate)
+                ]);
                 
                 chartContainer.html("");
 
@@ -233,6 +333,13 @@
                 const nightColor = "#f3f4f6", dayColor = "#FFFFFF";
                 const { sunrise: sunriseTime, sunset: sunsetTime } = calculateSunriseSunset(currentDate, LOCATION_LAT, LOCATION_LNG);
 
+                if (clubStatus.dockTime === 'sunset') {
+                    clubStatus.dockTime = sunsetTime;
+                }
+                if (clubStatus.midDayDockTime === 'sunset') {
+                    clubStatus.midDayDockTime = sunsetTime;
+                }
+
                 const overlap = 1;
                 svg.append("rect").attr("x", xScale(startOfDay)).attr("width", (xScale(sunriseTime) - xScale(startOfDay)) + overlap).attr("height", height).attr("fill", nightColor);
                 svg.append("rect").attr("x", xScale(sunriseTime)).attr("width", (xScale(sunsetTime) - xScale(sunriseTime)) + overlap).attr("height", height).attr("fill", dayColor);
@@ -258,82 +365,45 @@
                 }
                 if (currentSegment.length > 1) redSegments.push(currentSegment);
 
-                const dayOfWeek = currentDate.getDay();
-                const regularOpeningTime = new Date(startOfDay);
-                regularOpeningTime.setHours((dayOfWeek === 0 || dayOfWeek === 6) ? 9 : 12, 0, 0, 0);
-
-                const clubDayStart = regularOpeningTime;
-                const clubDayEnd = sunsetTime;
-                
-                const crossingPoints = redSegments.flat().map(d => d.time);
-                const significantEvents = [regularOpeningTime, sunsetTime, ...crossingPoints].sort((a,b) => a - b);
-                const openPeriods = [];
-                let potentialStart = regularOpeningTime;
-                for (const eventTime of significantEvents) {
-                    if (eventTime < potentialStart) continue;
-                    if (eventTime >= sunsetTime) break;
-                    const midPoint = new Date((potentialStart.getTime() + eventTime.getTime()) / 2);
-                    const bisect = d3.bisector(d => d.time).left;
-                    const index = bisect(chartData, midPoint);
-                    const tideAtMid = chartData[index] ? chartData[index].height : -1;
-                    if (tideAtMid > DANGEROUS_LOW_TIDE) openPeriods.push({ start: potentialStart, end: eventTime });
-                    potentialStart = eventTime;
-                }
-                if (potentialStart < sunsetTime) {
-                    const midPoint = new Date((potentialStart.getTime() + sunsetTime.getTime()) / 2);
-                    const bisect = d3.bisector(d => d.time).left;
-                    const index = bisect(chartData, midPoint);
-                    const tideAtMid = chartData[index] ? chartData[index].height : -1;
-                    if (tideAtMid > DANGEROUS_LOW_TIDE) openPeriods.push({ start: potentialStart, end: sunsetTime });
-                }
-
-                const validOpenPeriods = openPeriods.map(period => {
-                    let openTime = period.start;
-                    if (openTime < regularOpeningTime) openTime = regularOpeningTime;
-                    let dockTime = new Date(period.end.getTime() - 30 * 60000);
-                    if (period.end.getTime() !== sunsetTime.getTime()) {
-                        dockTime = period.end;
-                    }
-                    return { openTime, dockTime, period };
-                }).filter(p => p.dockTime.getTime() - p.openTime.getTime() >= (90 * 60 * 1000));
-                
                 const dayEvents = [];
+                clubStatusAlert.textContent = clubStatus.alertMessage || '';
 
-                let alertMessage = '';
-                const isEffectivelyClosedAllDay = validOpenPeriods.length === 0 && clubDayStart < clubDayEnd;
+                if (!clubStatus.isClosed) {
+                    const openOverlayColor = "rgba(34, 197, 94, 0.15)";
+                    
+                    const openPeriods = [];
+                    if (clubStatus.midDayDockTime && clubStatus.midDayOpenTime) {
+                        if (clubStatus.openTime && clubStatus.midDayDockTime > clubStatus.openTime) {
+                           openPeriods.push({ start: clubStatus.openTime, end: clubStatus.midDayDockTime, type: 'morning' });
+                        }
+                        if (clubStatus.midDayOpenTime && clubStatus.dockTime > clubStatus.midDayOpenTime) {
+                           openPeriods.push({ start: clubStatus.midDayOpenTime, end: clubStatus.dockTime, type: 'afternoon' });
+                        }
+                    } 
+                    else if (clubStatus.openTime && clubStatus.dockTime > clubStatus.openTime) {
+                        openPeriods.push({ start: clubStatus.openTime, end: clubStatus.dockTime, type: 'full_day' });
+                    }
 
-                if (isEffectivelyClosedAllDay) {
-                    alertMessage = "Closed All Day Due to Tide";
-                } else {
-                    let alerts = new Set();
-                    if (validOpenPeriods.length > 0 && validOpenPeriods[0].openTime > regularOpeningTime) alerts.add("Late Open");
-                    if (validOpenPeriods.length > 0 && validOpenPeriods[validOpenPeriods.length - 1].dockTime < new Date(sunsetTime.getTime() - 30 * 60000)) alerts.add("Early Close");
-                    if (validOpenPeriods.length > 1) alerts.add("Mid-Day Closure");
-                    if (alerts.size > 0) alertMessage = Array.from(alerts).join(' & ') + " Due to Tide";
-                }
-                clubStatusAlert.textContent = alertMessage;
-                
-                const openOverlayColor = "rgba(34, 197, 94, 0.15)";
-                validOpenPeriods.forEach(({openTime, dockTime}) => {
-                    if (dockTime > openTime) {
+                    openPeriods.forEach(({start, end, type}) => {
                          svg.append("rect")
-                           .attr("x", xScale(openTime))
-                           .attr("width", xScale(dockTime) - xScale(openTime))
+                           .attr("x", xScale(start))
+                           .attr("width", xScale(end) - xScale(start))
                            .attr("height", height)
                            .attr("fill", openOverlayColor);
-                    }
-                });
-                
-                validOpenPeriods.forEach(({openTime, dockTime, period}) => {
-                    if (openTime < period.end && openTime > startOfDay) {
-                        svg.append("line").attr("x1", xScale(openTime)).attr("x2", xScale(openTime)).attr("y1", 0).attr("y2", height).attr("stroke", "#22c55e").attr("stroke-width", 1.5);
-                        dayEvents.push({time: openTime, text: "Club Opens", type: 'open'});
-                    }
-                    if (dockTime > openTime && dockTime < endOfDay) {
-                         svg.append("line").attr("x1", xScale(dockTime)).attr("x2", xScale(dockTime)).attr("y1", 0).attr("y2", height).attr("stroke", "#f97316").attr("stroke-width", 1.5);
-                         dayEvents.push({time: dockTime, text: "Dock Time", type: 'dock'});
-                    }
-                });
+                        
+                        const openText = type === 'afternoon' ? "Club Re-Opens" : "Club Opens";
+                        const dockText = type === 'morning' ? "Mid-Day Dock Time" : "Dock Time";
+
+                        if (start > startOfDay && start < endOfDay) {
+                            svg.append("line").attr("x1", xScale(start)).attr("x2", xScale(start)).attr("y1", 0).attr("y2", height).attr("stroke", "#22c55e").attr("stroke-width", 1.5);
+                            dayEvents.push({time: start, text: openText, type: 'open'});
+                        }
+                        if (end > start && end < endOfDay) {
+                             svg.append("line").attr("x1", xScale(end)).attr("x2", xScale(end)).attr("y1", 0).attr("y2", height).attr("stroke", "#f97316").attr("stroke-width", 1.5);
+                             dayEvents.push({time: end, text: dockText, type: 'dock'});
+                        }
+                    });
+                }
 
                 const risingColor = "#5da7d1", fallingColor = "#0369a1";
                 const eventPoints = [chartData[0], ...tideEvents, chartData[chartData.length - 1]].sort((a, b) => a.time - b.time).filter((d, i, arr) => !d || i === 0 || d.time.getTime() !== arr[i-1].time.getTime());
@@ -362,7 +432,6 @@
                     d3.select(this).append("text").attr("class", "event-label").attr("dy", "-10px").attr("text-anchor", "middle").text(`${d.height.toFixed(2)}ft`);
                 });
 
-                // Draw 'Now' cursor last to ensure it's on top
                 const now = new Date();
                 if (currentDate.toDateString() === now.toDateString() && now >= startOfDay && now <= endOfDay) {
                     const bisect = d3.bisector(d => d.time).left;
@@ -376,7 +445,7 @@
                            .attr("cy", yScale(currentDataPoint.height))
                            .attr("r", 5)
                            .attr("fill", "#facc15")
-                           .style("pointer-events", "none"); // Prevent it from interfering with hover
+                           .style("pointer-events", "none");
                     }
                 }
 
@@ -529,15 +598,6 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
 
 
 
