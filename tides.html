@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tide Chart Widget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff; /* White page background */
+        }
+        .tide-chart-container {
+            touch-action: manipulation;
+        }
+        .axis path,
+        .axis line {
+            stroke: #d1d5db; /* Lighter axis lines */
+        }
+        .axis text {
+            fill: #6b7280; /* Darker text for readability */
+            font-size: 0.75rem;
+        }
+        .event-label {
+            font-size: 0.7rem;
+            fill: #374151; /* Dark Grey */
+            font-weight: 600;
+        }
+        /* Style for the SVG container to be responsive */
+        #chart-container svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* --- Responsive Aspect Ratio --- */
+        .aspect-wrapper {
+            padding-top: 66.67%; /* 3:2 aspect ratio for mobile (default) */
+        }
+        @media (min-width: 640px) { /* sm breakpoint */
+            .aspect-wrapper {
+                padding-top: 50%; /* 2:1 aspect ratio for desktop */
+            }
+        }
+        .time-indicator-label {
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="tide-chart-container bg-transparent text-gray-800 rounded-2xl p-4 sm:p-6 w-full max-w-[600px] mx-auto">
+        <!-- Header: Location, Date, and Navigation -->
+        <div class="flex justify-between items-start"> <!-- Aligned to top and removed padding -->
+            <button id="prev-day" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <div class="text-center">
+                 <div class="relative">
+                    <div class="flex items-center justify-center space-x-2 p-1">
+                        <p id="current-date" class="text-sm text-gray-600"></p>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <input type="date" id="date-picker" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                </div>
+                <p id="current-tide-status" class="text-lg text-gray-700 font-semibold h-7"></p>
+                <p id="next-tide-event" class="text-sm text-gray-500 h-5"></p>
+                <p id="club-status-alert" class="text-sm text-red-500 h-5"></p>
+            </div>
+            <button id="next-day" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Aspect Ratio Wrapper -->
+        <div class="relative w-full aspect-wrapper">
+            <div id="chart-container" class="absolute top-0 left-0 w-full h-full"></div>
+        </div>
+        
+        <!-- Legend -->
+        <div id="legend" class="flex flex-wrap justify-center items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-2"></div>
+        
+        <!-- Events List -->
+        <div id="events-list" class="mt-4 text-sm text-gray-600 space-y-1"></div>
+
+        <!-- Tooltip for Hover Interaction -->
+        <div id="tooltip" class="absolute pointer-events-none opacity-0 transition-opacity duration-200 bg-white bg-opacity-80 backdrop-blur-sm text-gray-800 border border-gray-200 text-sm rounded-lg px-3 py-2 shadow-lg">
+            <p id="tooltip-time"></p>
+            <p id="tooltip-height" class="font-bold"></p>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURATION ---
+            const initialDate = new Date(); // Load the chart for the current browser date
+            const DANGEROUS_LOW_TIDE = 1.5; // in feet
+
+            // --- STATE ---
+            const chartContainer = d3.select("#chart-container");
+            const tooltip = d3.select("#tooltip");
+            const dateDisplay = document.getElementById('current-date');
+            const datePicker = document.getElementById('date-picker');
+            const nextTideDisplay = document.getElementById('next-tide-event');
+            const clubStatusAlert = document.getElementById('club-status-alert');
+            const currentTideStatus = document.getElementById('current-tide-status');
+            const eventsList = document.getElementById('events-list');
+            let currentDate = new Date(initialDate);
+            let countdownInterval = null;
+            const tideDataCache = {};
+            const NOAA_STATION_ID = "9414816"; // Richmond, CA
+            const LOCATION_LAT = 37.8044; // Oakland, CA Latitude
+            const LOCATION_LNG = -122.2712; // Oakland, CA Longitude
+            let isHoveringOnEvent = false;
+            
+            // --- HELPERS ---
+            const parseNOAADate = d3.timeParse("%Y-%m-%d %H:%M");
+
+            function calculateSunriseSunset(date, latitude, longitude) {
+                const toRad = Math.PI / 180;
+                const dayOfYear = d => Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+                const day = dayOfYear(date);
+                const B = 2 * Math.PI * (day - 81) / 364;
+                const equationOfTime = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+                const solarDeclination = -23.44 * Math.cos(2 * Math.PI * (day + 10) / 365);
+                const zenith = 90.833;
+                const latRad = latitude * toRad;
+                const decRad = solarDeclination * toRad;
+                const hourAngleRad = Math.acos(Math.cos(zenith * toRad) / (Math.cos(latRad) * Math.cos(decRad)) - Math.tan(latRad) * Math.tan(decRad));
+                const hourAngle = hourAngleRad * (180 / Math.PI);
+                const timezoneOffsetMinutes = -date.getTimezoneOffset();
+                const solarNoonMinutes = 720 - 4 * longitude - equationOfTime + timezoneOffsetMinutes;
+                const sunriseMinutes = solarNoonMinutes - hourAngle * 4;
+                const sunsetMinutes = solarNoonMinutes + hourAngle * 4;
+                const sunrise = new Date(date);
+                sunrise.setHours(Math.floor(sunriseMinutes / 60), Math.round(sunriseMinutes % 60), 0, 0);
+                const sunset = new Date(date);
+                sunset.setHours(Math.floor(sunsetMinutes / 60), Math.round(sunsetMinutes % 60), 0, 0);
+                return { sunrise, sunset };
+            }
+
+            async function fetchTideData(date) {
+                const dateString = date.toISOString().split('T')[0];
+                if (tideDataCache[dateString]) return tideDataCache[dateString];
+                const yyyymmdd = date.getFullYear() + ('0' + (date.getMonth() + 1)).slice(-2) + ('0' + date.getDate()).slice(-2);
+                const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=NOS.CO-OPS.CAT&begin_date=${yyyymmdd}&end_date=${yyyymmdd}&datum=MLLW&station=${NOAA_STATION_ID}&time_zone=lst_ldt&units=english&format=json`;
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`NOAA API request failed: ${response.statusText}`);
+                    const data = await response.json();
+                    if (data.error || !data.predictions) {
+                        tideDataCache[dateString] = [];
+                        return [];
+                    }
+                    const formattedData = data.predictions.map(p => ({ time: parseNOAADate(p.t), height: parseFloat(p.v) })).filter(p => p.time !== null);
+                    tideDataCache[dateString] = formattedData;
+                    return formattedData;
+                } catch (error) {
+                    console.error("Failed to fetch tide data:", error);
+                    return null;
+                }
+            }
+            
+            function findTideExtremes(tideData) {
+                if (!tideData || tideData.length < 3) return [];
+                const extremes = [];
+                let direction = 0;
+                for (let i = 1; i < tideData.length; i++) {
+                    const diff = tideData[i].height - tideData[i-1].height;
+                    if (diff > 0) { direction = 1; break; }
+                    if (diff < 0) { direction = -1; break; }
+                }
+                for (let i = 1; i < tideData.length - 1; i++) {
+                    const newDirection = (tideData[i+1].height - tideData[i].height) > 0 ? 1 : (tideData[i+1].height - tideData[i].height) < 0 ? -1 : direction;
+                    if (direction === 1 && newDirection === -1) extremes.push({ type: 'High', ...tideData[i] });
+                    else if (direction === -1 && newDirection === 1) extremes.push({ type: 'Low', ...tideData[i] });
+                    if(newDirection !== 0) direction = newDirection;
+                }
+                return extremes;
+            }
+
+            async function drawChart() {
+                chartContainer.html("<div class='text-gray-500 flex items-center justify-center h-full'>Loading tide data...</div>");
+                clubStatusAlert.textContent = '';
+                eventsList.innerHTML = '';
+
+                const [currentTides] = await Promise.all([fetchTideData(currentDate)]);
+                
+                chartContainer.html("");
+
+                if (!currentTides || currentTides.length === 0) {
+                    const message = !currentTides ? "Could not load tide data." : "No tide data available for this date.";
+                    chartContainer.html(`<div class='text-red-500 p-4 flex items-center justify-center h-full'>${message}</div>`);
+                    return;
+                }
+                
+                const chartData = currentTides;
+                const startOfDay = d3.timeDay.floor(currentDate);
+                const endOfDay = d3.timeDay.ceil(currentDate);
+
+                const prevDay = new Date(currentDate); prevDay.setDate(prevDay.getDate() - 1);
+                const nextDay = new Date(currentDate); nextDay.setDate(nextDay.getDate() + 1);
+                const [prevTides, nextTides] = await Promise.all([ fetchTideData(prevDay), fetchTideData(nextDay) ]);
+                const allTidesData = [...(prevTides || []), ...currentTides, ...(nextTides || [])];
+                const allExtremes = findTideExtremes(allTidesData);
+                const tideEvents = allExtremes.filter(event => event.time >= startOfDay && event.time < endOfDay);
+
+                const containerRect = chartContainer.node().getBoundingClientRect();
+                const isMobile = window.innerWidth < 640;
+                const margin = { top: isMobile ? 40 : 20, right: 20, bottom: 40, left: 45 };
+                const width = containerRect.width - margin.left - margin.right;
+                const height = containerRect.height - margin.top - margin.bottom;
+
+                const svg = chartContainer.append("svg").attr("width", containerRect.width).attr("height", containerRect.height)
+                    .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+                
+                const xScale = d3.scaleTime().domain([startOfDay, endOfDay]).range([0, width]);
+                const [minTide, maxTide] = d3.extent(chartData, d => d.height);
+                const yScale = d3.scaleLinear().domain([minTide - 1, maxTide + 2]).range([height, 0]);
+                const curve = d3.curveBasis;
+                const areaGenerator = (y0) => d3.area().x(d => xScale(d.time)).y0(y0).y1(d => yScale(d.height)).curve(curve);
+                const lineGenerator = d3.line().x(d => xScale(d.time)).y(d => yScale(d.height)).curve(curve);
+                
+                const nightColor = "#f3f4f6", dayColor = "#FFFFFF";
+                const { sunrise: sunriseTime, sunset: sunsetTime } = calculateSunriseSunset(currentDate, LOCATION_LAT, LOCATION_LNG);
+
+                const overlap = 1;
+                svg.append("rect").attr("x", xScale(startOfDay)).attr("width", (xScale(sunriseTime) - xScale(startOfDay)) + overlap).attr("height", height).attr("fill", nightColor);
+                svg.append("rect").attr("x", xScale(sunriseTime)).attr("width", (xScale(sunsetTime) - xScale(sunriseTime)) + overlap).attr("height", height).attr("fill", dayColor);
+                svg.append("rect").attr("x", xScale(sunsetTime)).attr("width", xScale(endOfDay) - xScale(sunsetTime)).attr("height", height).attr("fill", nightColor);
+
+                const redAreaGenerator = d3.area().x(d => xScale(d.time)).y0(yScale(DANGEROUS_LOW_TIDE)).y1(d => yScale(d.height)).curve(curve);
+                const redSegments = []; let currentSegment = [];
+                for (let i = 0; i < chartData.length; i++) {
+                    const d = chartData[i], prev = i > 0 ? chartData[i - 1] : null;
+                    const isBelow = d.height < DANGEROUS_LOW_TIDE, wasBelow = prev ? prev.height < DANGEROUS_LOW_TIDE : false;
+                    if (prev && isBelow !== wasBelow) {
+                        const t0 = prev.time.getTime(), t1 = d.time.getTime(), h0 = prev.height, h1 = d.height;
+                        const intersectionTime = new Date(t0 + (t1 - t0) * (DANGEROUS_LOW_TIDE - h0) / (h1 - h0));
+                        const intersectionPoint = { time: intersectionTime, height: DANGEROUS_LOW_TIDE };
+                        if (isBelow) currentSegment.push(intersectionPoint);
+                        else { currentSegment.push(intersectionPoint); if (currentSegment.length > 1) redSegments.push(currentSegment); currentSegment = []; }
+                    }
+                    if (isBelow) currentSegment.push(d);
+                }
+                const lastDataPoint = chartData.length > 0 ? chartData[chartData.length - 1] : null;
+                if (lastDataPoint && lastDataPoint.height < DANGEROUS_LOW_TIDE && currentSegment.length > 0) {
+                    if (lastDataPoint.time < endOfDay) currentSegment.push({ time: endOfDay, height: lastDataPoint.height });
+                }
+                if (currentSegment.length > 1) redSegments.push(currentSegment);
+
+                const dayOfWeek = currentDate.getDay();
+                const regularOpeningTime = new Date(startOfDay);
+                regularOpeningTime.setHours((dayOfWeek === 0 || dayOfWeek === 6) ? 9 : 12, 0, 0, 0);
+
+                const clubDayStart = regularOpeningTime;
+                const clubDayEnd = sunsetTime;
+                
+                const crossingPoints = redSegments.flat().map(d => d.time);
+                const significantEvents = [regularOpeningTime, sunsetTime, ...crossingPoints].sort((a,b) => a - b);
+                const openPeriods = [];
+                let potentialStart = regularOpeningTime;
+                for (const eventTime of significantEvents) {
+                    if (eventTime < potentialStart) continue;
+                    if (eventTime >= sunsetTime) break;
+                    const midPoint = new Date((potentialStart.getTime() + eventTime.getTime()) / 2);
+                    const bisect = d3.bisector(d => d.time).left;
+                    const index = bisect(chartData, midPoint);
+                    const tideAtMid = chartData[index] ? chartData[index].height : -1;
+                    if (tideAtMid > DANGEROUS_LOW_TIDE) openPeriods.push({ start: potentialStart, end: eventTime });
+                    potentialStart = eventTime;
+                }
+                if (potentialStart < sunsetTime) {
+                    const midPoint = new Date((potentialStart.getTime() + sunsetTime.getTime()) / 2);
+                    const bisect = d3.bisector(d => d.time).left;
+                    const index = bisect(chartData, midPoint);
+                    const tideAtMid = chartData[index] ? chartData[index].height : -1;
+                    if (tideAtMid > DANGEROUS_LOW_TIDE) openPeriods.push({ start: potentialStart, end: sunsetTime });
+                }
+
+                const validOpenPeriods = openPeriods.map(period => {
+                    let openTime = period.start;
+                    if (openTime < regularOpeningTime) openTime = regularOpeningTime;
+                    let dockTime = new Date(period.end.getTime() - 30 * 60000);
+                    if (period.end.getTime() !== sunsetTime.getTime()) {
+                        dockTime = period.end;
+                    }
+                    return { openTime, dockTime, period };
+                }).filter(p => p.dockTime.getTime() - p.openTime.getTime() >= (90 * 60 * 1000));
+                
+                const dayEvents = [];
+
+                let alertMessage = '';
+                const isEffectivelyClosedAllDay = validOpenPeriods.length === 0 && clubDayStart < clubDayEnd;
+
+                if (isEffectivelyClosedAllDay) {
+                    alertMessage = "Closed All Day Due to Tide";
+                } else {
+                    let alerts = new Set();
+                    if (validOpenPeriods.length > 0 && validOpenPeriods[0].openTime > regularOpeningTime) alerts.add("Late Open");
+                    if (validOpenPeriods.length > 0 && validOpenPeriods[validOpenPeriods.length - 1].dockTime < new Date(sunsetTime.getTime() - 30 * 60000)) alerts.add("Early Close");
+                    if (validOpenPeriods.length > 1) alerts.add("Mid-Day Closure");
+                    if (alerts.size > 0) alertMessage = Array.from(alerts).join(' & ') + " Due to Tide";
+                }
+                clubStatusAlert.textContent = alertMessage;
+                
+                const openOverlayColor = "rgba(34, 197, 94, 0.15)";
+                validOpenPeriods.forEach(({openTime, dockTime}) => {
+                    if (dockTime > openTime) {
+                         svg.append("rect")
+                           .attr("x", xScale(openTime))
+                           .attr("width", xScale(dockTime) - xScale(openTime))
+                           .attr("height", height)
+                           .attr("fill", openOverlayColor);
+                    }
+                });
+                
+                validOpenPeriods.forEach(({openTime, dockTime, period}) => {
+                    if (openTime < period.end && openTime > startOfDay) {
+                        svg.append("line").attr("x1", xScale(openTime)).attr("x2", xScale(openTime)).attr("y1", 0).attr("y2", height).attr("stroke", "#22c55e").attr("stroke-width", 1.5);
+                        dayEvents.push({time: openTime, text: "Club Opens", type: 'open'});
+                    }
+                    if (dockTime > openTime && dockTime < endOfDay) {
+                         svg.append("line").attr("x1", xScale(dockTime)).attr("x2", xScale(dockTime)).attr("y1", 0).attr("y2", height).attr("stroke", "#f97316").attr("stroke-width", 1.5);
+                         dayEvents.push({time: dockTime, text: "Dock Time", type: 'dock'});
+                    }
+                });
+
+                const risingColor = "#5da7d1", fallingColor = "#0369a1";
+                const eventPoints = [chartData[0], ...tideEvents, chartData[chartData.length - 1]].sort((a, b) => a.time - b.time).filter((d, i, arr) => !d || i === 0 || d.time.getTime() !== arr[i-1].time.getTime());
+                const segments = [];
+                for (let i = 0; i < eventPoints.length - 1; i++) {
+                    const startPoint = eventPoints[i], endPoint = eventPoints[i+1];
+                    if (!startPoint || !endPoint) continue;
+                    segments.push({ rising: endPoint.height > startPoint.height, data: chartData.filter(d => d.time >= startPoint.time && d.time <= endPoint.time) });
+                }
+                if (segments.length > 0) {
+                    const lastSegment = segments[segments.length - 1], lastDataPoint = chartData[chartData.length - 1];
+                    if (lastDataPoint.time < endOfDay) lastSegment.data.push({ time: endOfDay, height: lastDataPoint.height });
+                }
+                segments.forEach(seg => svg.append("path").datum(seg.data).attr("fill", seg.rising ? risingColor : fallingColor).attr("d", areaGenerator(height)));
+                svg.append("path").datum(chartData).attr("fill", "none").attr("stroke", "#0ea5e9").attr("stroke-width", 2).attr("d", lineGenerator);
+                redSegments.forEach(segment => svg.append("path").datum(segment).attr("fill", "rgba(239, 68, 68, 0.7)").attr("d", redAreaGenerator));
+
+                svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale).ticks(d3.timeHour.every(6)).tickFormat(d3.timeFormat("%H:%M"))).attr("class", "axis x-axis");
+                const yAxis = d3.axisLeft(yScale), ticks = yScale.ticks(), uniqueRoundedTicks = [...new Set(ticks.map(t => Math.round(t)))];
+                yAxis.tickValues(uniqueRoundedTicks).tickFormat(d => `${d} ft`);
+                svg.append("g").call(yAxis).attr("class", "axis y-axis");
+                
+                const now = new Date();
+                if (currentDate.toDateString() === now.toDateString() && now >= startOfDay && now <= endOfDay) {
+                    const bisect = d3.bisector(d => d.time).left;
+                    const index = bisect(chartData, now, 1);
+                    const a = chartData[index - 1], b = chartData[index];
+                    const currentDataPoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
+                    
+                    if (currentDataPoint) {
+                         svg.append("circle")
+                           .attr("cx", xScale(now))
+                           .attr("cy", yScale(currentDataPoint.height))
+                           .attr("r", 5)
+                           .attr("fill", "#facc15");
+                    }
+                }
+                
+                const eventsGroup = svg.selectAll(".event").data(tideEvents).enter().append("g").attr("class", "event").attr("transform", d => `translate(${xScale(d.time)},${yScale(d.height)})`);
+                eventsGroup.append("circle").attr("r", 5).attr("fill", "#f3f4f6").attr("stroke", "#1f2937").attr("stroke-width", 1.5);
+                eventsGroup.each(function(d) {
+                    d3.select(this).append("text").attr("class", "event-label").attr("dy", "-10px").attr("text-anchor", "middle").text(`${d.height.toFixed(2)}ft`);
+                });
+
+                eventsGroup.on("mouseover", (event, d) => { isHoveringOnEvent = true; tooltip.style("opacity", 1).style("left", `${event.pageX + 15}px`).style("top", `${event.pageY - 15}px`); tooltip.select("#tooltip-time").text(`Event: ${d3.timeFormat("%H:%M")(d.time)}`); tooltip.select("#tooltip-height").text(`${d.height.toFixed(2)} ft`); }).on("mouseout", () => { isHoveringOnEvent = false; tooltip.style("opacity", 0); });
+
+                const hoverGroup = svg.append("g").attr("class", "hover-group").style("display", "none");
+                hoverGroup.append("line").attr("stroke", "#9ca3af").attr("stroke-width", 1).attr("y1", 0).attr("y2", height);
+                const hoverCircle = hoverGroup.append("circle").attr("r", 5).attr("fill", "#ef4444").attr("stroke", "#ffffff").attr("stroke-width", 1.5);
+                function handleInteractionMove(event) {
+                    event.preventDefault();
+                    if (isHoveringOnEvent) { hoverGroup.style("display", "none"); return; }
+                    hoverGroup.style("display", null);
+                    const pointer = event.touches ? event.touches[0] : event;
+                    const [mx] = d3.pointer(pointer, this);
+                    const time = xScale.invert(mx);
+                    const bisect = d3.bisector(d => d.time).left;
+                    const index = bisect(chartData, time, 1);
+                    const a = chartData[index - 1], b = chartData[index];
+                    let d = !a ? b : !b ? a : (time - a.time > b.time - time) ? b : a;
+                    if (!d) return;
+                    hoverGroup.attr("transform", `translate(${xScale(d.time)}, 0)`);
+                    hoverCircle.attr("cy", yScale(d.height));
+                    const tooltipNode = tooltip.node(), tooltipRect = tooltipNode.getBoundingClientRect();
+                    let leftPos = pointer.pageX + 15, topPos = pointer.pageY - 15;
+                    if (event.touches) { leftPos = pointer.pageX - (tooltipRect.width / 2); topPos = pointer.pageY - tooltipRect.height - 20; }
+                    tooltip.style("left", `${leftPos}px`).style("top", `${topPos}px`);
+                    tooltip.select("#tooltip-time").text(d3.timeFormat("%H:%M")(d.time));
+                    tooltip.select("#tooltip-height").text(`${d.height.toFixed(2)} ft`);
+                }
+                svg.append("rect").attr("width", width).attr("height", height).attr("fill", "none").attr("pointer-events", "all")
+                    .on("mouseover", (e) => { if (!isHoveringOnEvent) { hoverGroup.style("display", null); tooltip.style("opacity", 1); }})
+                    .on("mouseout", (e) => { hoverGroup.style("display", "none"); if (!isHoveringOnEvent) tooltip.style("opacity", 0); })
+                    .on("mousemove", handleInteractionMove)
+                    .on("touchstart", (e) => { e.preventDefault(); if (!isHoveringOnEvent) { hoverGroup.style("display", null); tooltip.style("opacity", 1); }}, { passive: false })
+                    .on("touchmove", handleInteractionMove, { passive: false })
+                    .on("touchend", (e) => { hoverGroup.style("display", "none"); if (!isHoveringOnEvent) tooltip.style("opacity", 0);})
+                    .on("touchcancel", (e) => { hoverGroup.style("display", "none"); if (!isHoveringOnEvent) tooltip.style("opacity", 0);});
+                
+                tideEvents.forEach(event => {
+                    if (event.time >= sunriseTime && event.time <= sunsetTime) {
+                        dayEvents.push({ time: event.time, text: `${event.type} Tide: ${event.height.toFixed(2)} ft`, type: event.type.toLowerCase() });
+                    }
+                });
+                
+                dayEvents.push({ time: sunsetTime, text: "Sunset", type: 'sunset' });
+                dayEvents.sort((a, b) => a.time - b.time);
+                
+                const uniqueEvents = [...new Set(dayEvents.map(e => JSON.stringify(e)))].map(s => JSON.parse(s));
+                uniqueEvents.sort((a,b) => new Date(a.time) - new Date(b.time));
+
+                if (uniqueEvents.length > 0) {
+                     const eventIcons = {
+                        open: `<svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                        dock: `<svg class="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                        high: `<svg class="w-4 h-4 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`,
+                        low: `<svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`,
+                        sunset: `<svg class="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 18H8a4 4 0 010-8h8a4 4 0 010 8z"></path></svg>`
+                    };
+                    
+                    let tableHTML = '<table class="w-full text-left">';
+                    tableHTML += '<tbody>';
+                    tableHTML += uniqueEvents.map(e => {
+                        const icon = eventIcons[e.type] || '';
+                        return `<tr class="border-t border-gray-200"><td class="py-1 w-6">${icon}</td><td class="pr-4 py-1">${e.text}</td><td class="py-1 text-right"><strong class="font-medium">${d3.timeFormat("%H:%M")(new Date(e.time))}</strong></td></tr>`;
+                    }).join('');
+                    tableHTML += '</tbody></table>';
+                    eventsList.innerHTML = tableHTML;
+                } else {
+                    eventsList.innerHTML = `<p>No scheduled events during daylight hours.</p>`;
+                }
+
+                updateUI();
+            }
+
+            function updateUI() {
+                const isMobile = window.innerWidth < 640;
+                const dateFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+                if (!isMobile) dateFormatOptions.year = 'numeric';
+                dateDisplay.textContent = currentDate.toLocaleString(undefined, dateFormatOptions);
+
+                const yyyy = currentDate.getFullYear(), mm = String(currentDate.getMonth() + 1).padStart(2, '0'), dd = String(currentDate.getDate()).padStart(2, '0');
+                datePicker.value = `${yyyy}-${mm}-${dd}`;
+                if(countdownInterval) clearInterval(countdownInterval);
+                const isCurrentDay = currentDate.toDateString() === new Date().toDateString();
+                nextTideDisplay.style.display = isCurrentDay ? 'block' : 'none';
+                currentTideStatus.style.display = isCurrentDay ? 'block' : 'none';
+                if (isCurrentDay) {
+                    updateNextTideEvent();
+                    countdownInterval = setInterval(updateNextTideEvent, 60000); // Update every minute
+                }
+                document.getElementById('legend').innerHTML = `<div class="flex items-center space-x-1"><div class="w-3 h-3 rounded-sm" style="background-color: rgba(34, 197, 94, 0.15);"></div><span>Club Open</span></div><div class="flex items-center space-x-1"><div class="w-0.5 h-3 bg-green-500"></div><span>Open Time</span></div> <div class="flex items-center space-x-1"><div class="w-0.5 h-3 bg-orange-500"></div><span>Dock Time</span></div> <div class="flex items-center space-x-1"><div class="w-3 h-3 rounded-full" style="background-color: #facc15;"></div><span>Now</span></div><div class="flex items-center space-x-1"><div class="w-3 h-3" style="background-color: rgba(239, 68, 68, 0.7);"></div><span>Tide under 1.5 feet (Club Usually Closed)</span></div>`;
+            }
+
+            async function updateNextTideEvent() {
+                 const now = new Date();
+                const [prevTides, currentTides, nextTides] = await Promise.all([ fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)), fetchTideData(now), fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)) ]);
+                if (!prevTides || !currentTides || !nextTides) { nextTideDisplay.innerHTML = ""; return; }
+                
+                const bisect = d3.bisector(d => d.time).left;
+                const index = bisect(currentTides, now, 1);
+                const a = currentTides[index - 1], b = currentTides[index];
+                const currentTidePoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
+
+                if (currentTidePoint) {
+                    const currentHeight = currentTidePoint.height;
+                    const combinedTideData = [...currentTides, ...nextTides];
+                    const timeIn5Mins = new Date(now.getTime() + 5 * 60000);
+                    const indexIn5Mins = d3.bisector(d => d.time).left(combinedTideData, timeIn5Mins, 1);
+                    const a5 = combinedTideData[indexIn5Mins - 1], b5 = combinedTideData[indexIn5Mins];
+                    const futureTidePoint = !a5 ? b5 : !b5 ? a5 : (timeIn5Mins - a5.time > b5.time - timeIn5Mins) ? b5 : a5;
+                    
+                    let directionArrow = '';
+                    if (futureTidePoint) {
+                        const futureHeight = futureTidePoint.height;
+                        if (futureHeight > currentHeight) directionArrow = `<svg class="w-5 h-5 text-cyan-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>`;
+                        else if (futureHeight < currentHeight) directionArrow = `<svg class="w-5 h-5 text-amber-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>`;
+                    }
+                    currentTideStatus.innerHTML = `<span class="inline-flex items-center">${directionArrow}<span class="ml-1">${currentHeight.toFixed(2)} ft</span></span>`;
+                }
+
+                const allTides = [...findTideExtremes(prevTides), ...findTideExtremes(currentTides), ...findTideExtremes(nextTides)].sort((a,b) => a.time - b.time);
+                const nextEvent = allTides.find(event => event.time > now);
+                if (nextEvent) {
+                    const diff = nextEvent.time - now, hours = Math.floor(diff / 3600000), minutes = Math.floor((diff % 3600000) / 60000);
+                    nextTideDisplay.innerHTML = `<span>${nextEvent.type} tide in ${hours}h ${minutes}m at ${nextEvent.height.toFixed(2)} ft</span>`;
+                } else {
+                    nextTideDisplay.innerHTML = "";
+                }
+            }
+
+            document.getElementById('prev-day').addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 1); drawChart(); });
+            document.getElementById('next-day').addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); drawChart(); });
+            datePicker.addEventListener('change', (event) => {
+                const dateString = event.target.value;
+                if (!dateString) return;
+                const [year, month, day] = dateString.split('-').map(Number);
+                const selectedDate = new Date(currentDate.getTime());
+                selectedDate.setFullYear(year, month - 1, day);
+                if (!isNaN(selectedDate.getTime()) && selectedDate.toDateString() !== currentDate.toDateString()) {
+                    currentDate = selectedDate;
+                    drawChart();
+                }
+            });
+            window.addEventListener('resize', drawChart);
+
+            drawChart();
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
