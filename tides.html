@@ -326,9 +326,11 @@
                 
                 validOpenPeriods.forEach(({openTime, dockTime, period}) => {
                     if (openTime < period.end && openTime > startOfDay) {
+                        svg.append("line").attr("x1", xScale(openTime)).attr("x2", xScale(openTime)).attr("y1", 0).attr("y2", height).attr("stroke", "#22c55e").attr("stroke-width", 1.5);
                         dayEvents.push({time: openTime, text: "Club Opens", type: 'open'});
                     }
                     if (dockTime > openTime && dockTime < endOfDay) {
+                         svg.append("line").attr("x1", xScale(dockTime)).attr("x2", xScale(dockTime)).attr("y1", 0).attr("y2", height).attr("stroke", "#f97316").attr("stroke-width", 1.5);
                          dayEvents.push({time: dockTime, text: "Dock Time", type: 'dock'});
                     }
                 });
@@ -527,6 +529,7 @@
     </script>
 </body>
 </html>
+
 
 
 
