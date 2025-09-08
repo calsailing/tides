@@ -61,17 +61,17 @@
             </button>
             <div class="text-center">
                  <div class="relative">
-                    <div class="flex items-center justify-center space-x-2 p-1">
-                        <p id="current-date" class="text-sm text-gray-600"></p>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                    </div>
-                    <input type="date" id="date-picker" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                </div>
-                <p id="current-tide-status" class="text-lg text-gray-700 font-semibold h-7"></p>
-                <p id="next-tide-event" class="text-sm text-gray-500 h-5"></p>
-                <p id="club-status-alert" class="text-sm text-red-500 h-5"></p>
+                     <div class="flex items-center justify-center space-x-2 p-1">
+                         <p id="current-date" class="text-sm text-gray-600"></p>
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                         </svg>
+                     </div>
+                     <input type="date" id="date-picker" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                 </div>
+                 <p id="current-tide-status" class="text-lg text-gray-700 font-semibold h-7"></p>
+                 <p id="next-tide-event" class="text-sm text-gray-500 h-5"></p>
+                 <p id="club-status-alert" class="text-sm text-red-500 h-5"></p>
             </div>
             <button id="next-day" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,8 +102,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- CONFIGURATION ---
-            // Set to the specific date and time for our sailing scenario.
-            const initialDate = new Date('2025-09-08T12:29:00-07:00'); // Monday, Sept 8, 2025, 12:29 PM PDT
+            const initialDate = new Date(); // Use the actual current date and time
             const DANGEROUS_LOW_TIDE = 1.5; // in feet
 
             // --- STATE ---
@@ -386,10 +385,10 @@
 
                     openPeriods.forEach(({start, end, type}) => {
                          svg.append("rect")
-                           .attr("x", xScale(start))
-                           .attr("width", xScale(end) - xScale(start))
-                           .attr("height", height)
-                           .attr("fill", openOverlayColor);
+                            .attr("x", xScale(start))
+                            .attr("width", xScale(end) - xScale(start))
+                            .attr("height", height)
+                            .attr("fill", openOverlayColor);
                         
                         const openText = type === 'afternoon' ? "Club Re-Opens" : "Club Opens";
                         const dockText = type === 'morning' ? "Mid-Day Dock Time" : "Dock Time";
@@ -432,7 +431,7 @@
                     d3.select(this).append("text").attr("class", "event-label").attr("dy", "-10px").attr("text-anchor", "middle").text(`${d.height.toFixed(2)}ft`);
                 });
 
-                const now = new Date();
+                const now = new Date(); // Use actual current time
                 if (currentDate.toDateString() === now.toDateString() && now >= startOfDay && now <= endOfDay) {
                     const bisect = d3.bisector(d => d.time).left;
                     const index = bisect(chartData, now, 1);
@@ -441,11 +440,11 @@
                     
                     if (currentDataPoint) {
                          svg.append("circle")
-                           .attr("cx", xScale(now))
-                           .attr("cy", yScale(currentDataPoint.height))
-                           .attr("r", 5)
-                           .attr("fill", "#facc15")
-                           .style("pointer-events", "none");
+                            .attr("cx", xScale(now))
+                            .attr("cy", yScale(currentDataPoint.height))
+                            .attr("r", 5)
+                            .attr("fill", "#facc15")
+                            .style("pointer-events", "none");
                     }
                 }
 
@@ -490,7 +489,6 @@
                     }
                 });
                 
-                dayEvents.push({ time: sunriseTime, text: "Sunrise", type: 'sunrise' });
                 dayEvents.push({ time: sunsetTime, text: "Sunset", type: 'sunset' });
                 dayEvents.sort((a, b) => a.time - b.time);
                 
@@ -499,24 +497,23 @@
 
                 if (uniqueEvents.length > 0) {
                      const eventIcons = {
-                        sunrise: `<svg class="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M5 19h14"></path></svg>`,
-                        open: `<svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-                        dock: `<svg class="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-                        high: `<svg class="w-4 h-4 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`,
-                        low: `<svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`,
-                        sunset: `<svg class="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 18H8a4 4 0 010-8h8a4 4 0 010 8z"></path></svg>`
-                    };
+                          open: `<svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                          dock: `<svg class="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                          high: `<svg class="w-4 h-4 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`,
+                          low: `<svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`,
+                          sunset: `<svg class="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 18H8a4 4 0 010-8h8a4 4 0 010 8z"></path></svg>`
+                     };
                     
-                    let tableHTML = '<table class="w-full text-left">';
-                    tableHTML += '<tbody>';
-                    tableHTML += uniqueEvents.map(e => {
-                        const icon = eventIcons[e.type] || '';
-                        return `<tr class="border-t border-gray-200"><td class="py-1 w-6">${icon}</td><td class="pr-4 py-1">${e.text}</td><td class="py-1 text-right"><strong class="font-medium">${d3.timeFormat("%H:%M")(new Date(e.time))}</strong></td></tr>`;
-                    }).join('');
-                    tableHTML += '</tbody></table>';
-                    eventsList.innerHTML = tableHTML;
+                     let tableHTML = '<table class="w-full text-left">';
+                     tableHTML += '<tbody>';
+                     tableHTML += uniqueEvents.map(e => {
+                         const icon = eventIcons[e.type] || '';
+                         return `<tr class="border-t border-gray-200"><td class="py-1 w-6">${icon}</td><td class="pr-4 py-1">${e.text}</td><td class="py-1 text-right"><strong class="font-medium">${d3.timeFormat("%H:%M")(new Date(e.time))}</strong></td></tr>`;
+                     }).join('');
+                     tableHTML += '</tbody></table>';
+                     eventsList.innerHTML = tableHTML;
                 } else {
-                    eventsList.innerHTML = `<p>No scheduled events during daylight hours.</p>`;
+                     eventsList.innerHTML = `<p>No scheduled events during daylight hours.</p>`;
                 }
 
                 updateUI();
@@ -536,46 +533,46 @@
                 currentTideStatus.style.display = isCurrentDay ? 'block' : 'none';
                 if (isCurrentDay) {
                     updateNextTideEvent();
-                    countdownInterval = setInterval(updateNextTideEvent, 60000); // Update every minute
+                    countdownInterval = setInterval(updateNextTideEvent, 60000); 
                 }
-                document.getElementById('legend').innerHTML = `<div class="flex items-center space-x-1"><div class="w-3 h-3 rounded-sm" style="background-color: rgba(34, 197, 94, 0.15);"></div><span>Club Open</span></div><div class="flex items-center space-x-1"><div class="w-0.5 h-3 bg-green-500"></div><span>Open Time</span></div> <div class="flex items-center space-x-1"><div class="w-0.5 h-3 bg-orange-500"></div><span>Dock Time</span></div> <div class="flex items-center space-x-1"><div class="w-3 h-3 rounded-full" style="background-color: #facc15;"></div><span>Now</span></div><div class="flex items-center space-x-1"><div class="w-3 h-3" style="background-color: rgba(239, 68, 68, 0.7);"></div><span>Tide under 1.5 feet (Club Usually Closed)</span></div>`;
+                document.getElementById('legend').innerHTML = `<div class="flex items-center space-x-1"><div class="w-3 h-3 rounded-sm" style="background-color: rgba(34, 197, 94, 0.15);"></div><span>Club Open</span></div><div class="flex items-center space-x-1"><div class="w-0.5 h-3 bg-green-500"></div><span>Open Time</span></div> <div class="flex items-center space-x-1"><div class="w-0.5 h-3 bg-orange-500"></div><span>Dock Time</span></div> <div class="flex items-center space-x-1"><div class="w-3 h-3 rounded-full" style="background-color: #facc15;"></div><span>Now</span></div><div class="flex items-center space-x-1"><div class="w-3 h-3" style="background-color: rgba(239, 68, 68, 0.7);"></div><span>Club Closed < 1.5' Tide</span></div>`;
             }
 
             async function updateNextTideEvent() {
-                 const now = new Date();
-                const [prevTides, currentTides, nextTides] = await Promise.all([ fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)), fetchTideData(now), fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)) ]);
-                if (!prevTides || !currentTides || !nextTides) { nextTideDisplay.innerHTML = ""; return; }
+                 const now = new Date(); // Use actual current time
+                 const [prevTides, currentTides, nextTides] = await Promise.all([ fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)), fetchTideData(now), fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)) ]);
+                 if (!prevTides || !currentTides || !nextTides) { nextTideDisplay.innerHTML = ""; return; }
                 
-                const bisect = d3.bisector(d => d.time).left;
-                const index = bisect(currentTides, now, 1);
-                const a = currentTides[index - 1], b = currentTides[index];
-                const currentTidePoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
+                 const bisect = d3.bisector(d => d.time).left;
+                 const index = bisect(currentTides, now, 1);
+                 const a = currentTides[index - 1], b = currentTides[index];
+                 const currentTidePoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
 
-                if (currentTidePoint) {
-                    const currentHeight = currentTidePoint.height;
-                    const combinedTideData = [...currentTides, ...nextTides];
-                    const timeIn5Mins = new Date(now.getTime() + 5 * 60000);
-                    const indexIn5Mins = d3.bisector(d => d.time).left(combinedTideData, timeIn5Mins, 1);
-                    const a5 = combinedTideData[indexIn5Mins - 1], b5 = combinedTideData[indexIn5Mins];
-                    const futureTidePoint = !a5 ? b5 : !b5 ? a5 : (timeIn5Mins - a5.time > b5.time - timeIn5Mins) ? b5 : a5;
-                    
-                    let directionArrow = '';
-                    if (futureTidePoint) {
-                        const futureHeight = futureTidePoint.height;
-                        if (futureHeight > currentHeight) directionArrow = `<svg class="w-5 h-5 text-cyan-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>`;
-                        else if (futureHeight < currentHeight) directionArrow = `<svg class="w-5 h-5 text-amber-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>`;
-                    }
-                    currentTideStatus.innerHTML = `<span class="inline-flex items-center">${directionArrow}<span class="ml-1">${currentHeight.toFixed(2)} ft</span></span>`;
-                }
+                 if (currentTidePoint) {
+                     const currentHeight = currentTidePoint.height;
+                     const combinedTideData = [...currentTides, ...nextTides];
+                     const timeIn5Mins = new Date(now.getTime() + 5 * 60000);
+                     const indexIn5Mins = d3.bisector(d => d.time).left(combinedTideData, timeIn5Mins, 1);
+                     const a5 = combinedTideData[indexIn5Mins - 1], b5 = combinedTideData[indexIn5Mins];
+                     const futureTidePoint = !a5 ? b5 : !b5 ? a5 : (timeIn5Mins - a5.time > b5.time - timeIn5Mins) ? b5 : a5;
+                     
+                     let directionArrow = '';
+                     if (futureTidePoint) {
+                         const futureHeight = futureTidePoint.height;
+                         if (futureHeight > currentHeight) directionArrow = `<svg class="w-5 h-5 text-cyan-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>`;
+                         else if (futureHeight < currentHeight) directionArrow = `<svg class="w-5 h-5 text-amber-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>`;
+                     }
+                     currentTideStatus.innerHTML = `<span class="inline-flex items-center">${directionArrow}<span class="ml-1">${currentHeight.toFixed(2)} ft</span></span>`;
+                 }
 
-                const allTides = [...findTideExtremes(prevTides), ...findTideExtremes(currentTides), ...findTideExtremes(nextTides)].sort((a,b) => a.time - b.time);
-                const nextEvent = allTides.find(event => event.time > now);
-                if (nextEvent) {
-                    const diff = nextEvent.time - now, hours = Math.floor(diff / 3600000), minutes = Math.floor((diff % 3600000) / 60000);
-                    nextTideDisplay.innerHTML = `<span>${nextEvent.type} tide in ${hours}h ${minutes}m at ${nextEvent.height.toFixed(2)} ft</span>`;
-                } else {
-                    nextTideDisplay.innerHTML = "";
-                }
+                 const allTides = [...findTideExtremes(prevTides), ...findTideExtremes(currentTides), ...findTideExtremes(nextTides)].sort((a,b) => a.time - b.time);
+                 const nextEvent = allTides.find(event => event.time > now);
+                 if (nextEvent) {
+                     const diff = nextEvent.time - now, hours = Math.floor(diff / 3600000), minutes = Math.floor((diff % 3600000) / 60000);
+                     nextTideDisplay.innerHTML = `<span>${nextEvent.type} tide in ${hours}h ${minutes}m at ${nextEvent.height.toFixed(2)} ft</span>`;
+                 } else {
+                     nextTideDisplay.innerHTML = "";
+                 }
             }
 
             document.getElementById('prev-day').addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 1); drawChart(); });
@@ -598,7 +595,6 @@
     </script>
 </body>
 </html>
-
 
 
 
