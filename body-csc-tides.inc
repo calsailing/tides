@@ -370,7 +370,7 @@ font-size:1.75rem!important;
             --color-table-border: #e5e7eb;
         }
 
-        html[data-theme='dark'] {
+        html.dark {
             --color-page-bg: #111827;
             --color-text-primary: #d1d5db;
             --color-text-secondary: #9ca3af;
@@ -455,7 +455,7 @@ font-size:1.75rem!important;
         }
     </style>
 
-                   <div class="tide-chart-container bg-transparent text-gray-800 rounded-2xl p-4 sm:p-6 w-full max-w-[600px] mx-auto">
+    <div class="tide-chart-container bg-transparent text-gray-800 rounded-2xl p-4 sm:p-6 w-full max-w-[600px] mx-auto">
         <div class="flex justify-between items-start">
             <button id="prev-day" class="p-2 rounded-full hover:bg-[--color-button-hover-bg] transition-colors duration-200">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[--color-text-secondary]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -521,7 +521,7 @@ font-size:1.75rem!important;
 
             // --- THEME REACTIVITY ---
             // The chart will automatically redraw itself to match the current theme (light/dark).
-            // It listens for changes to the `data-theme` attribute on the <html> element,
+            // It listens for changes to the `class` attribute on the <html> element,
             // which should be controlled by the parent webpage. It also listens for system theme changes.
             const redrawChartOnThemeChange = () => {
                 // Only redraw if the chart already exists
@@ -530,10 +530,10 @@ font-size:1.75rem!important;
                 }
             };
             
-            // 1. Observe direct changes to the data-theme attribute
+            // 1. Observe direct changes to the class attribute
             const observer = new MutationObserver((mutationsList) => {
                 for (const mutation of mutationsList) {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                         redrawChartOnThemeChange();
                     }
                 }
