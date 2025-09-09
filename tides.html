@@ -147,12 +147,34 @@
             let countdownInterval = null;
             const tideDataCache = {};
             const NOAA_STATION_ID = "9414816"; // Richmond, CA
-            const LOCATION_LAT = 37.8044; // Oakland, CA Latitude
-            const LOCATION_LNG = -122.2712; // Oakland, CA Longitude
+            // --- FIX: Updated coordinates to Berkeley, CA ---
+            const LOCATION_LAT = 37.8716; // Berkeley, CA Latitude
+            const LOCATION_LNG = -122.2727; // Berkeley, CA Longitude
             let isHoveringOnEvent = false;
+            let svg, xScale, yScale, chartDataForUpdate; // State for live updates
             
             // --- HELPERS ---
             const parseNOAADate = d3.timeParse("%Y-%m-%d %H:%M");
+
+            // --- FIX: Added function to determine if a date is in Pacific Daylight Time ---
+            function isPDT(date) {
+                const year = date.getFullYear();
+
+                // DST starts on the second Sunday in March at 2 AM
+                const dstStart = new Date(year, 2, 1); // March 1st
+                const firstDayOfMonth = dstStart.getDay(); // 0=Sun, 1=Mon, ...
+                const firstSunday = new Date(year, 2, 1 + (7 - firstDayOfMonth) % 7);
+                const secondSundayInMarch = new Date(firstSunday.getTime() + 7 * 24 * 60 * 60 * 1000);
+                secondSundayInMarch.setHours(2, 0, 0, 0); 
+
+                // DST ends on the first Sunday in November at 2 AM
+                const dstEnd = new Date(year, 10, 1); // November 1st
+                const firstDayOfNov = dstEnd.getDay();
+                const firstSundayInNovember = new Date(year, 10, 1 + (7 - firstDayOfNov) % 7);
+                firstSundayInNovember.setHours(2, 0, 0, 0);
+
+                return date >= secondSundayInMarch && date < firstSundayInNovember;
+            }
 
             function calculateSunriseSunset(date, latitude, longitude) {
                 const toRad = Math.PI / 180;
@@ -166,8 +188,12 @@
                 const decRad = solarDeclination * toRad;
                 const hourAngleRad = Math.acos(Math.cos(zenith * toRad) / (Math.cos(latRad) * Math.cos(decRad)) - Math.tan(latRad) * Math.tan(decRad));
                 const hourAngle = hourAngleRad * (180 / Math.PI);
-                const timezoneOffsetMinutes = -date.getTimezoneOffset();
-                const solarNoonMinutes = 720 - 4 * longitude - equationOfTime + timezoneOffsetMinutes;
+
+                // --- FIX: Use a fixed timezone for Berkeley (PST/PDT) instead of the user's local timezone ---
+                // PDT is UTC-7 (-420 minutes), PST is UTC-8 (-480 minutes)
+                const berkeleyTimezoneOffsetMinutes = isPDT(date) ? -7 * 60 : -8 * 60;
+                
+                const solarNoonMinutes = 720 - 4 * longitude - equationOfTime + berkeleyTimezoneOffsetMinutes;
                 const sunriseMinutes = solarNoonMinutes - hourAngle * 4;
                 const sunsetMinutes = solarNoonMinutes + hourAngle * 4;
                 const sunrise = new Date(date);
@@ -365,6 +391,7 @@
                 }
                 
                 const chartData = currentTides;
+                chartDataForUpdate = chartData; // Assign for external access
                 const startOfDay = d3.timeDay.floor(currentDate);
                 const endOfDay = d3.timeDay.ceil(currentDate);
 
@@ -381,12 +408,12 @@
                 const width = containerRect.width - margin.left - margin.right;
                 const height = containerRect.height - margin.top - margin.bottom;
 
-                const svg = chartContainer.append("svg").attr("width", containerRect.width).attr("height", containerRect.height)
+                svg = chartContainer.append("svg").attr("width", containerRect.width).attr("height", containerRect.height)
                     .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
                 
-                const xScale = d3.scaleTime().domain([startOfDay, endOfDay]).range([0, width]);
+                xScale = d3.scaleTime().domain([startOfDay, endOfDay]).range([0, width]);
                 const [minTide, maxTide] = d3.extent(chartData, d => d.height);
-                const yScale = d3.scaleLinear().domain([minTide - 1, maxTide + 2]).range([height, 0]);
+                yScale = d3.scaleLinear().domain([minTide - 1, maxTide + 2]).range([height, 0]);
                 const curve = d3.curveBasis;
                 const areaGenerator = (y0) => d3.area().x(d => xScale(d.time)).y0(y0).y1(d => yScale(d.height)).curve(curve);
                 const lineGenerator = d3.line().x(d => xScale(d.time)).y(d => yScale(d.height)).curve(curve);
@@ -493,22 +520,7 @@
                     d3.select(this).append("text").attr("class", "event-label").attr("dy", "-10px").attr("text-anchor", "middle").text(`${d.height.toFixed(2)}ft`);
                 });
 
-                const now = new Date(); // Use actual current time
-                if (currentDate.toDateString() === now.toDateString() && now >= startOfDay && now <= endOfDay) {
-                    const bisect = d3.bisector(d => d.time).left;
-                    const index = bisect(chartData, now, 1);
-                    const a = chartData[index - 1], b = chartData[index];
-                    const currentDataPoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
-                    
-                    if (currentDataPoint) {
-                         svg.append("circle")
-                            .attr("cx", xScale(now))
-                            .attr("cy", yScale(currentDataPoint.height))
-                            .attr("r", 5)
-                            .attr("fill", "#facc15")
-                            .style("pointer-events", "none");
-                    }
-                }
+                updateNowIndicator(); // Draw the 'now' indicator for the first time
 
                 eventsGroup.on("mouseover", (event, d) => { isHoveringOnEvent = true; tooltip.style("opacity", 1).style("left", `${event.pageX + 15}px`).style("top", `${event.pageY - 15}px`); tooltip.select("#tooltip-time").text(`Event: ${d3.timeFormat("%H:%M")(d.time)}`); tooltip.select("#tooltip-height").text(`${d.height.toFixed(2)} ft`); }).on("mouseout", () => { isHoveringOnEvent = false; tooltip.style("opacity", 0); });
 
@@ -579,6 +591,37 @@
                 }
 
                 updateUI();
+            }
+
+            function updateNowIndicator() {
+                if (!svg || !xScale || !yScale || !chartDataForUpdate) return;
+
+                // Remove previous indicator to prevent duplicates
+                svg.select(".now-indicator").remove();
+
+                const now = new Date();
+                const startOfDay = d3.timeDay.floor(currentDate);
+                const endOfDay = d3.timeDay.ceil(currentDate);
+
+                // Only draw if we are on the current day
+                if (currentDate.toDateString() === now.toDateString() && now >= startOfDay && now <= endOfDay) {
+                    const bisect = d3.bisector(d => d.time).left;
+                    const index = bisect(chartDataForUpdate, now, 1);
+                    const a = chartDataForUpdate[index - 1];
+                    const b = chartDataForUpdate[index];
+                    // Find the closest data point in time to 'now'
+                    const currentDataPoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
+                    
+                    if (currentDataPoint) {
+                         svg.append("circle")
+                            .attr("class", "now-indicator") // Add class for easy selection/removal
+                            .attr("cx", xScale(now))
+                            .attr("cy", yScale(currentDataPoint.height))
+                            .attr("r", 5)
+                            .attr("fill", "#facc15")
+                            .style("pointer-events", "none");
+                    }
+                }
             }
 
             function updateUI() {
@@ -655,6 +698,7 @@
                     } else {
                         nextTideDisplay.innerHTML = "";
                     }
+                    updateNowIndicator(); // Update the cursor position every minute
                 } catch (error) {
                     console.error("Error during periodic tide update:", error);
                     // Clear the fields on error to avoid showing stale data
@@ -699,7 +743,4 @@
     </script>
 </body>
 </html>
-
-
-
 
