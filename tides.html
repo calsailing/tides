@@ -480,7 +480,7 @@
                             .attr("fill", openOverlayColor);
                         
                         const openText = type === 'afternoon' ? "Club Re-Opens" : "Club Opens";
-                        const dockText = type === 'morning' ? "Mid-Day Dock Time" : "Dock Time";
+                        const dockText = type === 'morning' ? "Mid-Day Dock Time" : "Dock Time (Club Closes)";
 
                         if (start > startOfDay && start < endOfDay) {
                             svg.append("line").attr("x1", xScale(start)).attr("x2", xScale(start)).attr("y1", 0).attr("y2", height).attr("stroke", "#22c55e").attr("stroke-width", 1.5);
@@ -743,4 +743,6 @@
     </script>
 </body>
 </html>
+
+
 
