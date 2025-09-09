@@ -16,6 +16,10 @@
     h3{
 font-size:1.75rem!important;
     }
+    .text-gray-800, .text-gray-500, {
+    color:none!important}
+    
+
     .advisories{
     margin-top:0px!important;
     padding-top:10px!important;
