@@ -601,59 +601,66 @@
             }
 
             async function updateNextTideEvent() {
-                 const now = new Date(); // Use actual current time
-                 const [prevTides, currentTides, nextTides, nextNextTides] = await Promise.all([ 
-                     fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)), 
-                     fetchTideData(now), 
-                     fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)),
-                     fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2)) 
-                 ]);
+                try {
+                    const now = new Date(); // Use actual current time
+                    const [prevTides, currentTides, nextTides, nextNextTides] = await Promise.all([ 
+                        fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)), 
+                        fetchTideData(now), 
+                        fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)),
+                        fetchTideData(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2)) 
+                    ]);
 
-                 if (!prevTides || !currentTides || !nextTides || !nextNextTides) { 
-                     nextTideDisplay.innerHTML = ""; 
-                     currentTideStatus.innerHTML = "";
-                     return; 
-                 }
-                
-                 // FIX: Using a wider range of data for lookups to make it more robust.
-                 const combinedTideDataForLookup = [...prevTides, ...currentTides, ...nextTides];
-                 const bisect = d3.bisector(d => d.time).left;
-                 
-                 const index = bisect(combinedTideDataForLookup, now, 1);
-                 const a = combinedTideDataForLookup[index - 1];
-                 const b = combinedTideDataForLookup[index];
-                 const currentTidePoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
+                    if (!prevTides || !currentTides || !nextTides || !nextNextTides) { 
+                        nextTideDisplay.innerHTML = ""; 
+                        currentTideStatus.innerHTML = "";
+                        return; 
+                    }
+                    
+                    // FIX: Using a wider range of data for lookups to make it more robust.
+                    const combinedTideDataForLookup = [...prevTides, ...currentTides, ...nextTides];
+                    const bisect = d3.bisector(d => d.time).left;
+                    
+                    const index = bisect(combinedTideDataForLookup, now, 1);
+                    const a = combinedTideDataForLookup[index - 1];
+                    const b = combinedTideDataForLookup[index];
+                    const currentTidePoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
 
-                 if (currentTidePoint) {
-                     const currentHeight = currentTidePoint.height;
-                     const timeIn5Mins = new Date(now.getTime() + 5 * 60000);
-                     const indexIn5Mins = bisect(combinedTideDataForLookup, timeIn5Mins, 1);
-                     const a5 = combinedTideDataForLookup[indexIn5Mins - 1];
-                     const b5 = combinedTideDataForLookup[indexIn5Mins];
-                     const futureTidePoint = !a5 ? b5 : !b5 ? a5 : (timeIn5Mins - a5.time > b5.time - timeIn5Mins) ? b5 : a5;
-                     
-                     let directionArrow = '';
-                     if (futureTidePoint) {
-                         const futureHeight = futureTidePoint.height;
-                         if (futureHeight > currentHeight) directionArrow = `<svg class="w-5 h-5 text-cyan-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`;
-                         else if (futureHeight < currentHeight) directionArrow = `<svg class="w-5 h-5 text-blue-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`;
-                     }
-                     currentTideStatus.innerHTML = `<span class="inline-flex items-center">${directionArrow}<span class="ml-1">${currentHeight.toFixed(2)} ft</span></span>`;
-                 } else {
-                     currentTideStatus.innerHTML = "";
-                 }
+                    if (currentTidePoint) {
+                        const currentHeight = currentTidePoint.height;
+                        const timeIn5Mins = new Date(now.getTime() + 5 * 60000);
+                        const indexIn5Mins = bisect(combinedTideDataForLookup, timeIn5Mins, 1);
+                        const a5 = combinedTideDataForLookup[indexIn5Mins - 1];
+                        const b5 = combinedTideDataForLookup[indexIn5Mins];
+                        const futureTidePoint = !a5 ? b5 : !b5 ? a5 : (timeIn5Mins - a5.time > b.time - timeIn5Mins) ? b5 : a5;
+                        
+                        let directionArrow = '';
+                        if (futureTidePoint) {
+                            const futureHeight = futureTidePoint.height;
+                            if (futureHeight > currentHeight) directionArrow = `<svg class="w-5 h-5 text-cyan-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`;
+                            else if (futureHeight < currentHeight) directionArrow = `<svg class="w-5 h-5 text-blue-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`;
+                        }
+                        currentTideStatus.innerHTML = `<span class="inline-flex items-center">${directionArrow}<span class="ml-1">${currentHeight.toFixed(2)} ft</span></span>`;
+                    } else {
+                        currentTideStatus.innerHTML = "";
+                    }
 
-                 // FIX: Combine raw data from multiple days before finding extremes
-                 const allRawTides = [...prevTides, ...currentTides, ...nextTides, ...nextNextTides];
-                 const allTideExtremes = findTideExtremes(allRawTides);
-                 const nextEvent = allTideExtremes.find(event => event.time > now);
-                 
-                 if (nextEvent) {
-                     const diff = nextEvent.time - now, hours = Math.floor(diff / 3600000), minutes = Math.floor((diff % 3600000) / 60000);
-                     nextTideDisplay.innerHTML = `<span>${nextEvent.type} tide in ${hours}h ${minutes}m at ${nextEvent.height.toFixed(2)} ft</span>`;
-                 } else {
-                     nextTideDisplay.innerHTML = "";
-                 }
+                    // FIX: Combine raw data from multiple days before finding extremes
+                    const allRawTides = [...prevTides, ...currentTides, ...nextTides, ...nextNextTides];
+                    const allTideExtremes = findTideExtremes(allRawTides);
+                    const nextEvent = allTideExtremes.find(event => event.time > now);
+                    
+                    if (nextEvent) {
+                        const diff = nextEvent.time - now, hours = Math.floor(diff / 3600000), minutes = Math.floor((diff % 3600000) / 60000);
+                        nextTideDisplay.innerHTML = `<span>${nextEvent.type} tide in ${hours}h ${minutes}m at ${nextEvent.height.toFixed(2)} ft</span>`;
+                    } else {
+                        nextTideDisplay.innerHTML = "";
+                    }
+                } catch (error) {
+                    console.error("Error during periodic tide update:", error);
+                    // Clear the fields on error to avoid showing stale data
+                    currentTideStatus.innerHTML = "";
+                    nextTideDisplay.innerHTML = "<span>Could not update status</span>";
+                }
             }
 
             function clearHeaderInfo() {
@@ -692,6 +699,7 @@
     </script>
 </body>
 </html>
+
 
 
 
