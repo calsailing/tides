@@ -13,6 +13,9 @@
     <script src="https://cdn.aerisapi.com/wxblox/latest/aeris-wxblox.js"></script>
 
     <style>
+    h3{
+font-size:1.75rem;
+    }
     .advisories{
     margin-top:0px!important;
     padding-top:10px!important;
