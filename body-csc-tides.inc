@@ -16,7 +16,11 @@
     h3{
 font-size:1.75rem!important;
     }
-    
+@media (min-width: 640px) {
+    .sm\:p-6 {
+        padding: 0rem!important;
+    }
+}
 
     .advisories{
     margin-top:0px!important;
