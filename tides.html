@@ -47,6 +47,35 @@
             font-size: 0.65rem;
             font-weight: 500;
         }
+        /* Wave Animation for Loading */
+        .wave-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .wave {
+            display: flex;
+            align-items: center;
+        }
+        .wave .bar {
+            width: 8px;
+            height: 5px;
+            margin: 0 3px;
+            background-color: #60a5fa;
+            border-radius: 9999px;
+            animation: wave-animation 1.2s ease-in-out infinite;
+        }
+        .wave .bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave .bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave .bar:nth-child(4) { animation-delay: 0.3s; }
+        @keyframes wave-animation {
+            0% { transform: scaleY(1); }
+            50% { transform: scaleY(4); }
+            100% { transform: scaleY(1); }
+        }
     </style>
 </head>
 <body class="p-4">
@@ -173,17 +202,40 @@
             function findTideExtremes(tideData) {
                 if (!tideData || tideData.length < 3) return [];
                 const extremes = [];
-                let direction = 0;
-                for (let i = 1; i < tideData.length; i++) {
-                    const diff = tideData[i].height - tideData[i-1].height;
-                    if (diff > 0) { direction = 1; break; }
-                    if (diff < 0) { direction = -1; break; }
+                
+                // Find initial direction by skipping any initial flat sections
+                let initialIndex = 1;
+                let initialDirection = 0;
+                while(initialIndex < tideData.length) {
+                    initialDirection = Math.sign(tideData[initialIndex].height - tideData[initialIndex-1].height);
+                    if (initialDirection !== 0) break;
+                    initialIndex++;
                 }
-                for (let i = 1; i < tideData.length - 1; i++) {
-                    const newDirection = (tideData[i+1].height - tideData[i].height) > 0 ? 1 : (tideData[i+1].height - tideData[i].height) < 0 ? -1 : direction;
-                    if (direction === 1 && newDirection === -1) extremes.push({ type: 'High', ...tideData[i] });
-                    else if (direction === -1 && newDirection === 1) extremes.push({ type: 'Low', ...tideData[i] });
-                    if(newDirection !== 0) direction = newDirection;
+
+                // If the whole dataset is flat, there are no extremes
+                if (initialDirection === 0) return [];
+
+                let lastDirection = initialDirection;
+
+                // Start scanning from where we first found a direction change
+                for (let i = initialIndex; i < tideData.length - 1; i++) {
+                    const currentDirection = Math.sign(tideData[i+1].height - tideData[i].height);
+                    
+                    // Ignore subsequent flat sections
+                    if (currentDirection === 0) continue;
+
+                    // Check for a change in direction
+                    if (currentDirection !== lastDirection) {
+                        if (lastDirection === 1 && currentDirection === -1) {
+                            // Change from rising to falling -> High Tide at point i
+                            extremes.push({ type: 'High', ...tideData[i] });
+                        } else if (lastDirection === -1 && currentDirection === 1) {
+                            // Change from falling to rising -> Low Tide at point i
+                            extremes.push({ type: 'Low', ...tideData[i] });
+                        }
+                    }
+
+                    lastDirection = currentDirection;
                 }
                 return extremes;
             }
@@ -285,7 +337,17 @@
             }
 
             async function drawChart() {
-                chartContainer.html("<div class='text-gray-500 flex items-center justify-center h-full'>Loading tide data...</div>");
+                const loadingHTML = `
+                    <div class='wave-container'>
+                        <div class='text-gray-500'>Loading tide data...</div>
+                        <div class='wave'>
+                            <div class='bar'></div>
+                            <div class='bar'></div>
+                            <div class='bar'></div>
+                            <div class='bar'></div>
+                        </div>
+                    </div>`;
+                chartContainer.html(loadingHTML);
                 clubStatusAlert.textContent = '';
                 eventsList.innerHTML = '';
 
@@ -630,4 +692,6 @@
     </script>
 </body>
 </html>
+
+
 
