@@ -335,10 +335,6 @@
         <script src="https://d3js.org/d3.v7.min.js"></script>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
-            body {
-                font-family: 'Inter', sans-serif;
-                background-color: #ffffff; /* White page background */
-            }
             .tide-chart-container {
                 touch-action: manipulation;
             }
