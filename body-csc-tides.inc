@@ -17,7 +17,7 @@
 font-size:1.75rem!important;
     }
 @media (min-width: 640px) {
-    .tidebox {
+    .tide-chart-container {
         padding: 0rem!important;
     }
 }
