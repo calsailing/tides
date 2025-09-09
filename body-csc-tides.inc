@@ -14,7 +14,7 @@
 
     <style>
     h3{
-font-size:1.75rem;
+font-size:1.75rem!important;
     }
     .advisories{
     margin-top:0px!important;
