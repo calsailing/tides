@@ -17,7 +17,7 @@
 font-size:1.75rem!important;
     }
 @media (min-width: 640px) {
-    .sm\:p-6 {
+    .tidebox {
         padding: 0rem!important;
     }
 }
@@ -459,7 +459,7 @@ font-size:1.75rem!important;
         }
     </style>
 
-    <div class="tide-chart-container bg-transparent text-gray-800 rounded-2xl p-4 sm:p-6 w-full max-w-[600px] mx-auto">
+    <div class="tide-chart-container bg-transparent text-gray-800 rounded-2xl p-4 tidebox w-full max-w-[600px] mx-auto">
         <div class="flex justify-between items-start">
             <button id="prev-day" class="p-2 rounded-full hover:bg-[--color-button-hover-bg] transition-colors duration-200">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[--color-text-secondary]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
