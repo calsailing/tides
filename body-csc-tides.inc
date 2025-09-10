@@ -398,9 +398,6 @@ font-size:1.75rem!important;
             --color-hover-circle-fill: #ef4444;
             --color-hover-circle-stroke: #ffffff;
             --color-now-indicator: #facc15;
-            --color-tooltip-bg: rgba(255, 255, 255, 0.8);
-            --color-tooltip-text: #1f2937;
-            --color-tooltip-border: #e5e7eb;
             --color-table-border: #e5e7eb;
             --icon-color-open: #22c55e;
             --icon-color-dock: #f97316;
@@ -444,9 +441,6 @@ font-size:1.75rem!important;
             --color-hover-circle-fill: #f87171;
             --color-hover-circle-stroke: #111827;
             --color-now-indicator: #fde047;
-            --color-tooltip-bg: rgba(17, 24, 39, 0.8);
-            --color-tooltip-text: #f9fafb;
-            --color-tooltip-border: #374151;
             --color-table-border: #374151;
             --icon-color-open: #4ade80;
             --icon-color-dock: #fb923c;
@@ -559,14 +553,20 @@ font-size:1.75rem!important;
         #tide-chart-widget-container .icon-low { color: var(--icon-color-low); }
         #tide-chart-widget-container .icon-sunset { color: var(--icon-color-sunset); }
 
+        /* --- TOOLTIP STYLES --- */
+        #tide-chart-tooltip {
+            /* Default (Light Theme) Variables */
+            --color-tooltip-bg: rgba(255, 255, 255, 0.8);
+            --color-tooltip-text: #1f2937;
+            --color-tooltip-border: #e5e7eb;
 
-        #tide-chart-widget-container #tooltip {
             position: absolute;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.2s;
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
+            font-family: 'Inter', sans-serif; /* <-- FIX: Added Font Family */
             font-size: 0.875rem;
             border-radius: 0.5rem;
             padding: 0.5rem 0.75rem;
@@ -574,8 +574,15 @@ font-size:1.75rem!important;
             background-color: var(--color-tooltip-bg);
             color: var(--color-tooltip-text);
             border: 1px solid var(--color-tooltip-border);
+            z-index: 9999;
         }
-        #tide-chart-widget-container #tooltip-height { font-weight: 700; }
+        .dark #tide-chart-tooltip {
+            /* Dark Theme Override Variables */
+            --color-tooltip-bg: rgba(17, 24, 39, 0.8);
+            --color-tooltip-text: #f9fafb;
+            --color-tooltip-border: #374151;
+        }
+        #tide-chart-tooltip #tooltip-height { font-weight: 700; }
 
         #tide-chart-widget-container .axis path,
         #tide-chart-widget-container .axis line { stroke: var(--color-axis-stroke); }
