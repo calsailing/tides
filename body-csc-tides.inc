@@ -338,9 +338,43 @@ font-size:1.75rem!important;
 
            <script src="https://d3js.org/d3.v7.min.js"></script>
         
-   <style>
+  <style>
+        /* --- SCOPED CSS RESET --- */
+        #tide-chart-widget-container * {
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        #tide-chart-widget-container p,
+        #tide-chart-widget-container h1,
+        #tide-chart-widget-container h2,
+        #tide-chart-widget-container h3 {
+            margin: 0;
+            padding: 0;
+            font-weight: normal;
+        }
+        #tide-chart-widget-container strong {
+            font-weight: 500; /* or 600 if you prefer */
+        }
+        #tide-chart-widget-container button {
+            background-color: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+        }
+        #tide-chart-widget-container svg {
+             display: inline-block; /* Prevents unwanted bottom margin */
+        }
+        #tide-chart-widget-container table {
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
+
+
         /* --- THEME VARIABLES & BASE STYLES --- */
-        .tide-chart-container {
+        #tide-chart-widget-container {
             /* Light theme variables */
             --color-page-bg: #ffffff;
             --color-text-primary: #374151;
@@ -368,17 +402,26 @@ font-size:1.75rem!important;
             --color-tooltip-text: #1f2937;
             --color-tooltip-border: #e5e7eb;
             --color-table-border: #e5e7eb;
+            --icon-color-open: #22c55e;
+            --icon-color-dock: #f97316;
+            --icon-color-high: #22d3ee;
+            --icon-color-low: #3b82f6;
+            --icon-color-sunset: #f97316;
 
             /* Base widget styles */
-            font-family: 'Inter', sans-serif;
             background-color: var(--color-page-bg);
             color: var(--color-text-primary);
             transition: background-color 0.3s, color 0.3s;
             touch-action: manipulation;
+            border-radius: 1rem; /* rounded-2xl */
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         /* Dark theme variables */
-        .dark .tide-chart-container {
+        .dark #tide-chart-widget-container {
             --color-page-bg: #111827;
             --color-text-primary: #d1d5db;
             --color-text-secondary: #9ca3af;
@@ -405,57 +448,148 @@ font-size:1.75rem!important;
             --color-tooltip-text: #f9fafb;
             --color-tooltip-border: #374151;
             --color-table-border: #374151;
+            --icon-color-open: #4ade80;
+            --icon-color-dock: #fb923c;
+            --icon-color-high: #67e8f9;
+            --icon-color-low: #60a5fa;
+            --icon-color-sunset: #fb923c;
         }
 
-        /* --- SCOPED WIDGET STYLES --- */
-        .tide-chart-container .axis path,
-        .tide-chart-container .axis line {
-            stroke: var(--color-axis-stroke);
-        }
-        .tide-chart-container .axis text {
-            fill: var(--color-text-tertiary);
-            font-size: 0.75rem;
-        }
-        .tide-chart-container .event-label {
-            font-size: 0.7rem;
-            fill: var(--color-text-primary);
-            font-weight: 600;
-        }
-        .tide-chart-container #chart-container svg {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-        .tide-chart-container .aspect-wrapper {
-            padding-top: 66.67%; /* 3:2 aspect ratio */
+        /* --- CUSTOM CSS STYLES --- */
+        #tide-chart-widget-container .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 0 1rem;
         }
         @media (min-width: 640px) {
-            .tide-chart-container .aspect-wrapper {
-                padding-top: 50%; /* 2:1 aspect ratio */
-            }
+            #tide-chart-widget-container .widget-header { padding: 0 1.5rem; }
         }
-        .tide-chart-container .wave-container {
+
+        #tide-chart-widget-container .nav-button {
+            padding: 0.5rem;
+            border-radius: 9999px;
+            transition: background-color 0.2s;
+        }
+        #tide-chart-widget-container .nav-button:hover {
+            background-color: var(--color-button-hover-bg);
+        }
+        #tide-chart-widget-container .nav-button svg {
+            width: 1.5rem;
+            height: 1.5rem;
+            color: var(--color-text-secondary);
+        }
+
+        #tide-chart-widget-container .info-center { text-align: center; }
+        #tide-chart-widget-container .date-picker-wrapper { position: relative; }
+        #tide-chart-widget-container .date-display {
             display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.25rem;
+        }
+        #tide-chart-widget-container #current-date { font-size: 0.875rem; color: var(--color-text-secondary); }
+        #tide-chart-widget-container .date-display svg { width: 1.25rem; height: 1.25rem; color: var(--color-text-tertiary); }
+        
+        #tide-chart-widget-container #date-picker {
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        #tide-chart-widget-container #current-tide-status { font-size: 1.125rem; font-weight: 600; min-height: 1.75rem; color: var(--color-text-primary); }
+        #tide-chart-widget-container #next-tide-event { font-size: 0.875rem; min-height: 1.25rem; color: var(--color-text-secondary); }
+        #tide-chart-widget-container #club-status-alert { font-size: 0.875rem; min-height: 1.25rem; color: var(--color-text-danger); }
+        /* Collapse status lines when they are empty */
+        #tide-chart-widget-container #current-tide-status:empty,
+        #tide-chart-widget-container #next-tide-event:empty,
+        #tide-chart-widget-container #club-status-alert:empty {
+            min-height: 0;
+        }
+
+        #tide-chart-widget-container .chart-aspect-wrapper { position: relative; width: 100%; }
+        #tide-chart-widget-container #chart-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        #tide-chart-widget-container #legend {
+            display: flex;
+            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            height: 100%;
-            flex-direction: column;
-            gap: 1rem;
+            gap: 0.25rem 1rem;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            padding-left: 1rem; padding-right: 1rem;
+            color: var(--color-text-secondary);
         }
-        .tide-chart-container .wave .bar {
-            width: 8px; height: 5px; margin: 0 3px;
-            background-color: #60a5fa; border-radius: 9999px;
-            animation: wave-animation 1.2s ease-in-out infinite;
+         #tide-chart-widget-container #legend > div { display: flex; align-items: center; gap: 0.25rem; }
+
+        #tide-chart-widget-container #events-list {
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            padding-left: 1rem; padding-right: 1rem;
+            padding-bottom: 1rem;
+            color: var(--color-text-secondary);
         }
-        .tide-chart-container .wave .bar:nth-child(2) { animation-delay: 0.1s; }
-        .tide-chart-container .wave .bar:nth-child(3) { animation-delay: 0.2s; }
-        .tide-chart-container .wave .bar:nth-child(4) { animation-delay: 0.3s; }
+        @media (min-width: 640px) {
+            #tide-chart-widget-container #legend { padding-left: 1.5rem; padding-right: 1.5rem; }
+            #tide-chart-widget-container #events-list { padding-left: 1.5rem; padding-right: 1.5rem; padding-bottom: 1.5rem; }
+        }
+        #tide-chart-widget-container #events-list table { 
+            width: 100%; 
+            text-align: left;
+        }
+        #tide-chart-widget-container #events-list tr { border-top: 1px solid var(--color-table-border); }
+        #tide-chart-widget-container #events-list td { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+        #tide-chart-widget-container #events-list td:first-child { width: 1.5rem; }
+        #tide-chart-widget-container #events-list td:nth-child(2) { padding-right: 1rem; }
+        #tide-chart-widget-container #events-list td:last-child { text-align: right; }
+        #tide-chart-widget-container #events-list strong { font-weight: 500; color: var(--color-text-primary); }
+        
+        #tide-chart-widget-container .icon-sm { width: 1rem; height: 1rem; }
+        #tide-chart-widget-container .icon-open { color: var(--icon-color-open); }
+        #tide-chart-widget-container .icon-dock { color: var(--icon-color-dock); }
+        #tide-chart-widget-container .icon-high { color: var(--icon-color-high); }
+        #tide-chart-widget-container .icon-low { color: var(--icon-color-low); }
+        #tide-chart-widget-container .icon-sunset { color: var(--icon-color-sunset); }
+
+
+        #tide-chart-widget-container #tooltip {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            font-size: 0.875rem;
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            background-color: var(--color-tooltip-bg);
+            color: var(--color-tooltip-text);
+            border: 1px solid var(--color-tooltip-border);
+        }
+        #tide-chart-widget-container #tooltip-height { font-weight: 700; }
+
+        #tide-chart-widget-container .axis path,
+        #tide-chart-widget-container .axis line { stroke: var(--color-axis-stroke); }
+        #tide-chart-widget-container .axis text { fill: var(--color-text-tertiary); font-size: 0.75rem; }
+        #tide-chart-widget-container .event-label { font-size: 0.7rem; fill: var(--color-text-primary); font-weight: 600; }
+        #tide-chart-widget-container #chart-container svg { display: block; width: 100%; height: 100%; }
+        #tide-chart-widget-container .aspect-wrapper { padding-top: 66.67%; position: relative; width: 100%; }
+        @media (min-width: 640px) { #tide-chart-widget-container .aspect-wrapper { padding-top: 50%; } }
+        #tide-chart-widget-container .wave-container { display: flex; justify-content: center; align-items: center; height: 100%; flex-direction: column; gap: 1rem; }
+        #tide-chart-widget-container .wave .bar { width: 8px; height: 5px; margin: 0 3px; background-color: #60a5fa; border-radius: 9999px; animation: wave-animation 1.2s ease-in-out infinite; }
+        #tide-chart-widget-container .wave .bar:nth-child(2) { animation-delay: 0.1s; }
+        #tide-chart-widget-container .wave .bar:nth-child(3) { animation-delay: 0.2s; }
+        #tide-chart-widget-container .wave .bar:nth-child(4) { animation-delay: 0.3s; }
         
         @keyframes wave-animation {
             0% { transform: scaleY(1); } 50% { transform: scaleY(4); } 100% { transform: scaleY(1); }
         }
     </style>
-
     <div class="tide-chart-container rounded-2xl w-full max-w-[600px] mx-auto">
         <div class="flex justify-between items-start p-4 sm:p-6">
             <button id="prev-day" class="p-2 rounded-full hover:bg-[--color-button-hover-bg] transition-colors duration-200">
