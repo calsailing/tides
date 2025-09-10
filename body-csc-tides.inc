@@ -590,45 +590,45 @@ font-size:1.75rem!important;
             0% { transform: scaleY(1); } 50% { transform: scaleY(4); } 100% { transform: scaleY(1); }
         }
     </style>
-    <div class="tide-chart-container rounded-2xl w-full max-w-[600px] mx-auto">
-        <div class="flex justify-between items-start p-4 sm:p-6">
-            <button id="prev-day" class="p-2 rounded-full hover:bg-[--color-button-hover-bg] transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[--color-text-secondary]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+     <div id="tide-chart-widget-container" class="tide-chart-container">
+        <div class="widget-header">
+            <button id="prev-day" class="nav-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
             </button>
-            <div class="text-center">
-                 <div class="relative">
-                     <div class="flex items-center justify-center space-x-2 p-1">
-                         <p id="current-date" class="text-sm" style="color: var(--color-text-secondary)"></p>
-                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" style="color: var(--color-text-tertiary)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="info-center">
+                 <div class="date-picker-wrapper">
+                     <div class="date-display">
+                         <p id="current-date"></p>
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                          </svg>
                      </div>
-                     <input type="date" id="date-picker" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                     <input type="date" id="date-picker">
                  </div>
-                 <p id="current-tide-status" class="text-lg font-semibold h-7" style="color: var(--color-text-primary)"></p>
-                 <p id="next-tide-event" class="text-sm h-5" style="color: var(--color-text-secondary)"></p>
-                 <p id="club-status-alert" class="text-sm h-5" style="color: var(--color-text-danger)"></p>
+                 <p id="current-tide-status"></p>
+                 <p id="next-tide-event"></p>
+                 <p id="club-status-alert"></p>
             </div>
-            <button id="next-day" class="p-2 rounded-full hover:bg-[--color-button-hover-bg] transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[--color-text-secondary]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button id="next-day" class="nav-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </button>
         </div>
 
-        <div class="relative w-full aspect-wrapper">
-            <div id="chart-container" class="absolute top-0 left-0 w-full h-full"></div>
+        <div class="aspect-wrapper">
+            <div id="chart-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
         </div>
         
-        <div id="legend" class="flex flex-wrap justify-center items-center gap-x-4 gap-y-1 text-xs mt-2 px-4 sm:px-6"></div>
+        <div id="legend"></div>
         
-        <div id="events-list" class="mt-4 text-sm space-y-1 px-4 sm:px-6 pb-4 sm:pb-6"></div>
+        <div id="events-list"></div>
 
-        <div id="tooltip" class="absolute pointer-events-none opacity-0 transition-opacity duration-200 backdrop-blur-sm text-sm rounded-lg px-3 py-2 shadow-lg" style="background-color: var(--color-tooltip-bg); color: var(--color-tooltip-text); border: 1px solid var(--color-tooltip-border);">
+        <div id="tooltip">
             <p id="tooltip-time"></p>
-            <p id="tooltip-height" class="font-bold"></p>
+            <p id="tooltip-height"></p>
         </div>
     </div>
 
@@ -715,7 +715,7 @@ font-size:1.75rem!important;
                 const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=NOS.CO-OPS.CAT&begin_date=${yyyymmdd}&end_date=${yyyymmdd}&datum=MLLW&station=${NOAA_STATION_ID}&time_zone=lst_ldt&units=english&format=json`;
                 
                 const maxRetries = 10;
-                const retryDelay = 1000; // 1 second
+                const retryDelay = 1000; 
 
                 for (let attempt = 1; attempt <= maxRetries; attempt++) {
                     try {
@@ -774,9 +774,8 @@ font-size:1.75rem!important;
                 const yyyymmdd = date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
                 const originalUrl = `https://www.cal-sailing.org/index.php?option=com_csctides&view=gettidedatalist&task=gettidedatalist&tmpl=component&output=json&tidedate=${yyyymmdd}`;
                 const url = `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`;
-
                 const maxRetries = 10;
-                const retryDelay = 1000; // 1 second
+                const retryDelay = 1000;
 
                 for (let attempt = 1; attempt <= maxRetries; attempt++) {
                     try {
@@ -788,19 +787,14 @@ font-size:1.75rem!important;
                         const responseData = JSON.parse(jsonString);
                         const clubData = responseData.data;
 
-                        if (!clubData) {
-                            throw new Error("Malformed club status JSON: 'data' property is missing.");
-                        }
+                        if (!clubData) throw new Error("Malformed club status JSON: 'data' property is missing.");
 
                         const parseClubTime = (timeStr) => {
                             if (!timeStr) return null;
                             timeStr = timeStr.toLowerCase().trim();
                             if (timeStr === 'sunset') return 'sunset';
                             const d = new Date(date);
-                            if (timeStr === 'noon') {
-                                d.setHours(12, 0, 0, 0);
-                                return d;
-                            }
+                            if (timeStr === 'noon') { d.setHours(12, 0, 0, 0); return d; }
                             const pm = timeStr.includes('pm');
                             const parts = timeStr.replace(/am|pm/i, '').trim().split(':');
                             let hours = parseInt(parts[0], 10);
@@ -813,9 +807,7 @@ font-size:1.75rem!important;
                         };
                         
                         const isClosed = clubData.clubclosed === true || clubData.clubclosed === 'true';
-                        if (isClosed) {
-                            return { isClosed: true, alertMessage: 'Club Closed Due To Tide' };
-                        }
+                        if (isClosed) return { isClosed: true, alertMessage: 'Club Closed Due To Tide' };
 
                         const openTime = parseClubTime(clubData.opentime);
                         const dockTime = parseClubTime(clubData.docktime);
@@ -836,9 +828,7 @@ font-size:1.75rem!important;
                                 midDayOpenTime = parseClubTime(times[1]);
                             }
                         }
-
                         const alertMessage = Array.from(alerts).join(' & ');
-
                         return { isClosed: false, openTime, dockTime, midDayDockTime, midDayOpenTime, alertMessage };
 
                     } catch (error) {
@@ -863,7 +853,7 @@ font-size:1.75rem!important;
                 chartContainer.html("");
                 if (!currentTides || currentTides.length === 0) {
                     const message = !currentTides ? "Could not load tide data." : "No tide data available for this date.";
-                    chartContainer.html(`<div class='text-red-500 p-4 flex items-center justify-center h-full'>${message}</div>`);
+                    chartContainer.html(`<div style="color: red; padding: 1rem; display: flex; align-items: center; justify-content: center; height: 100%;">${message}</div>`);
                     return;
                 }
                 const chartData = currentTides;
@@ -877,7 +867,7 @@ font-size:1.75rem!important;
                 const allExtremes = findTideExtremes(allTidesData);
                 const tideEvents = allExtremes.filter(event => event.time >= startOfDay && event.time < endOfDay);
                 
-                const widgetContainer = document.querySelector('.tide-chart-container');
+                const widgetContainer = document.querySelector('#tide-chart-widget-container');
                 if (!widgetContainer) return;
                 const computedStyles = getComputedStyle(widgetContainer);
                 const nightColor = computedStyles.getPropertyValue('--color-chart-night').trim();
@@ -1026,13 +1016,13 @@ font-size:1.75rem!important;
                 uniqueEvents.sort((a,b) => new Date(a.time) - new Date(b.time));
                 if (uniqueEvents.length > 0) {
                      const eventIcons = {
-                          open: `<svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-                          dock: `<svg class="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-                          high: `<svg class="w-4 h-4 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`,
-                          low: `<svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`,
-                          sunset: `<svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17 18a5 5 0 00-10 0M12 2v7m-5.66 2.34l1.42 1.42M1 18h2m18 0h2M18.36 11.64l1.42-1.42M23 22H1m15-17l-4 4-4-4"/></svg>`
+                          open: `<svg class="icon-sm icon-open" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                          dock: `<svg class="icon-sm icon-dock" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                          high: `<svg class="icon-sm icon-high" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`,
+                          low: `<svg class="icon-sm icon-low" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`,
+                          sunset: `<svg class="icon-sm icon-sunset" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17 18a5 5 0 00-10 0M12 2v7m-5.66 2.34l1.42 1.42M1 18h2m18 0h2M18.36 11.64l1.42-1.42M23 22H1m15-17l-4 4-4-4"/></svg>`
                      };
-                     let tableHTML = `<table class="w-full text-left"><tbody>${uniqueEvents.map(e => { const icon = eventIcons[e.type] || ''; return `<tr class="border-t" style="border-color: var(--color-table-border)"><td class="py-1 w-6">${icon}</td><td class="pr-4 py-1">${e.text}</td><td class="py-1 text-right"><strong class="font-medium" style="color: var(--color-text-primary)">${d3.timeFormat("%H:%M")(new Date(e.time))}</strong></td></tr>`; }).join('')}</tbody></table>`;
+                     let tableHTML = `<table><tbody>${uniqueEvents.map(e => { const icon = eventIcons[e.type] || ''; return `<tr><td>${icon}</td><td>${e.text}</td><td><strong>${d3.timeFormat("%H:%M")(new Date(e.time))}</strong></td></tr>`; }).join('')}</tbody></table>`;
                      eventsList.innerHTML = tableHTML;
                 } else {
                      eventsList.innerHTML = `<p>No scheduled events during daylight hours.</p>`;
@@ -1052,7 +1042,7 @@ font-size:1.75rem!important;
                     const a = chartDataForUpdate[index - 1], b = chartDataForUpdate[index];
                     const currentDataPoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
                     if (currentDataPoint) {
-                         const widgetContainer = document.querySelector('.tide-chart-container');
+                         const widgetContainer = document.querySelector('#tide-chart-widget-container');
                          if (!widgetContainer) return;
                          const computedStyles = getComputedStyle(widgetContainer);
                          const nowIndicatorColor = computedStyles.getPropertyValue('--color-now-indicator').trim();
@@ -1076,7 +1066,7 @@ font-size:1.75rem!important;
                     updateNextTideEvent();
                     countdownInterval = setInterval(updateNextTideEvent, 60000); 
                 }
-                document.getElementById('legend').innerHTML = `<div class="flex items-center space-x-1"><div class="w-3 h-3 rounded-sm" style="background-color: var(--color-chart-open-overlay);"></div><span>Club Open</span></div><div class="flex items-center space-x-1"><div class="w-0.5 h-3" style="background-color: var(--color-open-line)"></div><span>Open Time</span></div> <div class="flex items-center space-x-1"><div class="w-0.5 h-3" style="background-color: var(--color-dock-line)"></div><span>Dock Time</span></div> <div class="flex items-center space-x-1"><div class="w-3 h-3 rounded-full" style="background-color: var(--color-now-indicator);"></div><span>Now</span></div><div class="flex items-center space-x-1"><div class="w-3 h-3" style="background-color: var(--color-chart-danger-area);"></div><span>Club Closed < 1.5' Tide</span></div>`;
+                document.getElementById('legend').innerHTML = `<div><div style="width: 0.75rem; height: 0.75rem; border-radius: 0.125rem; background-color: var(--color-chart-open-overlay);"></div><span>Club Open</span></div><div><div style="width: 2px; height: 0.75rem; background-color: var(--color-open-line)"></div><span>Open Time</span></div><div><div style="width: 2px; height: 0.75rem; background-color: var(--color-dock-line)"></div><span>Dock Time</span></div><div><div style="width: 0.75rem; height: 0.75rem; border-radius: 9999px; background-color: var(--color-now-indicator);"></div><span>Now</span></div><div><div style="width: 0.75rem; height: 0.75rem; background-color: var(--color-chart-danger-area);"></div><span>Club Closed < 1.5' Tide</span></div>`;
             }
 
             async function updateNextTideEvent() {
@@ -1109,10 +1099,10 @@ font-size:1.75rem!important;
                         let directionArrow = '';
                         if (futureTidePoint) {
                             const futureHeight = futureTidePoint.height;
-                            if (futureHeight > currentHeight) directionArrow = `<svg class="w-5 h-5 text-cyan-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`;
-                            else if (futureHeight < currentHeight) directionArrow = `<svg class="w-5 h-5 text-blue-500 inline-block align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`;
+                            if (futureHeight > currentHeight) directionArrow = `<svg class="icon-sm" style="display: inline-block; vertical-align: middle; color: var(--icon-color-high);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`;
+                            else if (futureHeight < currentHeight) directionArrow = `<svg class="icon-sm" style="display: inline-block; vertical-align: middle; color: var(--icon-color-low);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`;
                         }
-                        currentTideStatus.innerHTML = `<span class="inline-flex items-center">${directionArrow}<span class="ml-1">${currentHeight.toFixed(2)} ft</span></span>`;
+                        currentTideStatus.innerHTML = `<span style="display: inline-flex; align-items: center;">${directionArrow}<span style="margin-left: 0.25rem;">${currentHeight.toFixed(2)} ft</span></span>`;
                     } else {
                         currentTideStatus.innerHTML = "";
                     }
@@ -1168,7 +1158,6 @@ font-size:1.75rem!important;
         });
         /* #end raw */
     </script>
-
                     </div><br/><br/>
 
 
