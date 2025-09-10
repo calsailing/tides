@@ -422,7 +422,7 @@ font-size:1.75rem!important;
 
         /* Dark theme variables */
         .dark #tide-chart-widget-container {
-            --color-page-bg: #111827;
+            --color-page-bg: transparent;
             --color-text-primary: #d1d5db;
             --color-text-secondary: #9ca3af;
             --color-text-tertiary: #9ca3af;
@@ -459,7 +459,7 @@ font-size:1.75rem!important;
         #tide-chart-widget-container .widget-header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center; /* Vertically center header content */
             padding: 0 1rem;
         }
         @media (min-width: 640px) {
@@ -542,7 +542,11 @@ font-size:1.75rem!important;
             text-align: left;
         }
         #tide-chart-widget-container #events-list tr { border-top: 1px solid var(--color-table-border); }
-        #tide-chart-widget-container #events-list td { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+        #tide-chart-widget-container #events-list td { 
+            padding-top: 0.25rem; 
+            padding-bottom: 0.25rem;
+            vertical-align: middle; /* Align icons and text */
+        }
         #tide-chart-widget-container #events-list td:first-child { width: 1.5rem; }
         #tide-chart-widget-container #events-list td:nth-child(2) { padding-right: 1rem; }
         #tide-chart-widget-container #events-list td:last-child { text-align: right; }
@@ -590,6 +594,7 @@ font-size:1.75rem!important;
             0% { transform: scaleY(1); } 50% { transform: scaleY(4); } 100% { transform: scaleY(1); }
         }
     </style>
+
      <div id="tide-chart-widget-container" class="tide-chart-container">
         <div class="widget-header">
             <button id="prev-day" class="nav-button">
