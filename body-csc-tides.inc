@@ -16,11 +16,7 @@
     h3{
 font-size:1.75rem!important;
     }
-@media (min-width: 640px) {
-    .tide-chart-container {
-        padding: 0rem!important;
-    }
-}
+
 
     .advisories{
     margin-top:0px!important;
@@ -340,12 +336,12 @@ font-size:1.75rem!important;
         <div class="bx--tile tile-radar-forecast">
 
 
-            <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://d3js.org/d3.v7.min.js"></script>
+           <script src="https://d3js.org/d3.v7.min.js"></script>
         
-    <style>
-        /* --- THEME VARIABLES --- */
-        :root {
+   <style>
+        /* --- THEME VARIABLES & BASE STYLES --- */
+        .tide-chart-container {
+            /* Light theme variables */
             --color-page-bg: #ffffff;
             --color-text-primary: #374151;
             --color-text-secondary: #6b7280;
@@ -372,9 +368,17 @@ font-size:1.75rem!important;
             --color-tooltip-text: #1f2937;
             --color-tooltip-border: #e5e7eb;
             --color-table-border: #e5e7eb;
+
+            /* Base widget styles */
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-page-bg);
+            color: var(--color-text-primary);
+            transition: background-color 0.3s, color 0.3s;
+            touch-action: manipulation;
         }
 
-        html.dark {
+        /* Dark theme variables */
+        .dark .tide-chart-container {
             --color-page-bg: #111827;
             --color-text-primary: #d1d5db;
             --color-text-secondary: #9ca3af;
@@ -403,42 +407,34 @@ font-size:1.75rem!important;
             --color-table-border: #374151;
         }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--color-page-bg);
-            color: var(--color-text-primary);
-            transition: background-color 0.3s, color 0.3s;
-        }
-        .tide-chart-container {
-            touch-action: manipulation;
-        }
-        .axis path,
-        .axis line {
+        /* --- SCOPED WIDGET STYLES --- */
+        .tide-chart-container .axis path,
+        .tide-chart-container .axis line {
             stroke: var(--color-axis-stroke);
         }
-        .axis text {
+        .tide-chart-container .axis text {
             fill: var(--color-text-tertiary);
             font-size: 0.75rem;
         }
-        .event-label {
+        .tide-chart-container .event-label {
             font-size: 0.7rem;
             fill: var(--color-text-primary);
             font-weight: 600;
         }
-        #chart-container svg {
+        .tide-chart-container #chart-container svg {
             display: block;
             width: 100%;
             height: 100%;
         }
-        .aspect-wrapper {
+        .tide-chart-container .aspect-wrapper {
             padding-top: 66.67%; /* 3:2 aspect ratio */
         }
-        @media (min-width: 640px) { /* sm breakpoint */
-            .aspect-wrapper {
+        @media (min-width: 640px) {
+            .tide-chart-container .aspect-wrapper {
                 padding-top: 50%; /* 2:1 aspect ratio */
             }
         }
-        .wave-container {
+        .tide-chart-container .wave-container {
             display: flex;
             justify-content: center;
             align-items: center;
@@ -446,21 +442,22 @@ font-size:1.75rem!important;
             flex-direction: column;
             gap: 1rem;
         }
-        .wave .bar {
+        .tide-chart-container .wave .bar {
             width: 8px; height: 5px; margin: 0 3px;
             background-color: #60a5fa; border-radius: 9999px;
             animation: wave-animation 1.2s ease-in-out infinite;
         }
-        .wave .bar:nth-child(2) { animation-delay: 0.1s; }
-        .wave .bar:nth-child(3) { animation-delay: 0.2s; }
-        .wave .bar:nth-child(4) { animation-delay: 0.3s; }
+        .tide-chart-container .wave .bar:nth-child(2) { animation-delay: 0.1s; }
+        .tide-chart-container .wave .bar:nth-child(3) { animation-delay: 0.2s; }
+        .tide-chart-container .wave .bar:nth-child(4) { animation-delay: 0.3s; }
+        
         @keyframes wave-animation {
             0% { transform: scaleY(1); } 50% { transform: scaleY(4); } 100% { transform: scaleY(1); }
         }
     </style>
 
-    <div class="tide-chart-container bg-transparent text-gray-800 rounded-2xl p-4 tidebox w-full max-w-[600px] mx-auto">
-        <div class="flex justify-between items-start">
+    <div class="tide-chart-container rounded-2xl w-full max-w-[600px] mx-auto">
+        <div class="flex justify-between items-start p-4 sm:p-6">
             <button id="prev-day" class="p-2 rounded-full hover:bg-[--color-button-hover-bg] transition-colors duration-200">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[--color-text-secondary]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -491,9 +488,9 @@ font-size:1.75rem!important;
             <div id="chart-container" class="absolute top-0 left-0 w-full h-full"></div>
         </div>
         
-        <div id="legend" class="flex flex-wrap justify-center items-center gap-x-4 gap-y-1 text-xs mt-2" style="color: var(--color-text-secondary)"></div>
+        <div id="legend" class="flex flex-wrap justify-center items-center gap-x-4 gap-y-1 text-xs mt-2 px-4 sm:px-6"></div>
         
-        <div id="events-list" class="mt-4 text-sm space-y-1" style="color: var(--color-text-secondary)"></div>
+        <div id="events-list" class="mt-4 text-sm space-y-1 px-4 sm:px-6 pb-4 sm:pb-6"></div>
 
         <div id="tooltip" class="absolute pointer-events-none opacity-0 transition-opacity duration-200 backdrop-blur-sm text-sm rounded-lg px-3 py-2 shadow-lg" style="background-color: var(--color-tooltip-bg); color: var(--color-tooltip-text); border: 1px solid var(--color-tooltip-border);">
             <p id="tooltip-time"></p>
@@ -524,17 +521,11 @@ font-size:1.75rem!important;
             let svg, xScale, yScale, chartDataForUpdate;
 
             // --- THEME REACTIVITY ---
-            // The chart will automatically redraw itself to match the current theme (light/dark).
-            // It listens for changes to the `class` attribute on the <html> element,
-            // which should be controlled by the parent webpage. It also listens for system theme changes.
             const redrawChartOnThemeChange = () => {
-                // Only redraw if the chart already exists
                 if (chartContainer.node() && chartContainer.select("svg").node()) {
                     drawChart();
                 }
             };
-            
-            // 1. Observe direct changes to the class attribute
             const observer = new MutationObserver((mutationsList) => {
                 for (const mutation of mutationsList) {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
@@ -543,10 +534,7 @@ font-size:1.75rem!important;
                 }
             });
             observer.observe(document.documentElement, { attributes: true });
-
-            // 2. Observe changes in system preference (for when the parent page doesn't set an explicit theme)
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawChartOnThemeChange);
-
 
             // --- HELPERS ---
             const parseNOAADate = d3.timeParse("%Y-%m-%d %H:%M");
@@ -587,30 +575,41 @@ font-size:1.75rem!important;
             }
 
             async function fetchTideData(date) {
-                // ... existing fetchTideData code ...
-                 const dateString = date.toISOString().split('T')[0];
+                const dateString = date.toISOString().split('T')[0];
                 if (tideDataCache[dateString]) return tideDataCache[dateString];
                 const yyyymmdd = date.getFullYear() + ('0' + (date.getMonth() + 1)).slice(-2) + ('0' + date.getDate()).slice(-2);
                 const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=NOS.CO-OPS.CAT&begin_date=${yyyymmdd}&end_date=${yyyymmdd}&datum=MLLW&station=${NOAA_STATION_ID}&time_zone=lst_ldt&units=english&format=json`;
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`NOAA API request failed: ${response.statusText}`);
-                    const data = await response.json();
-                    if (data.error || !data.predictions) {
-                        tideDataCache[dateString] = [];
-                        return [];
+                
+                const maxRetries = 10;
+                const retryDelay = 1000; // 1 second
+
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(`NOAA API request failed: ${response.statusText} (Attempt ${attempt})`);
+                        const data = await response.json();
+                        if (data.error || !data.predictions) {
+                            console.warn(`NOAA returned no predictions for ${dateString} (Attempt ${attempt})`);
+                            tideDataCache[dateString] = [];
+                            return [];
+                        }
+                        const formattedData = data.predictions.map(p => ({ time: parseNOAADate(p.t), height: parseFloat(p.v) })).filter(p => p.time !== null);
+                        tideDataCache[dateString] = formattedData;
+                        return formattedData;
+                    } catch (error) {
+                        console.error(`Failed to fetch tide data on attempt ${attempt}:`, error);
+                        if (attempt < maxRetries) {
+                            await new Promise(resolve => setTimeout(resolve, retryDelay));
+                        } else {
+                            console.error(`All ${maxRetries} attempts to fetch tide data failed.`);
+                            return null;
+                        }
                     }
-                    const formattedData = data.predictions.map(p => ({ time: parseNOAADate(p.t), height: parseFloat(p.v) })).filter(p => p.time !== null);
-                    tideDataCache[dateString] = formattedData;
-                    return formattedData;
-                } catch (error) {
-                    console.error("Failed to fetch tide data:", error);
-                    return null;
                 }
+                return null; 
             }
             
             function findTideExtremes(tideData) {
-                // ... existing findTideExtremes code ...
                 if (!tideData || tideData.length < 3) return [];
                 const extremes = [];
                 let initialIndex = 1;
@@ -638,66 +637,87 @@ font-size:1.75rem!important;
             }
 
             async function fetchClubStatus(date) {
-                // ... existing fetchClubStatus code ...
                 const yyyymmdd = date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
                 const originalUrl = `https://www.cal-sailing.org/index.php?option=com_csctides&view=gettidedatalist&task=gettidedatalist&tmpl=component&output=json&tidedate=${yyyymmdd}`;
                 const url = `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`;
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`Cal Sailing API request failed: ${response.statusText}`);
-                    const rawText = await response.text();
-                    const jsonString = rawText.replace(/<pre.*?>|<\/pre>/g, '');
-                    const responseData = JSON.parse(jsonString);
-                    const clubData = responseData.data;
-                    if (!clubData) {
-                        throw new Error("Malformed club status JSON: 'data' property is missing.");
-                    }
-                    const parseClubTime = (timeStr) => {
-                        if (!timeStr) return null;
-                        timeStr = timeStr.toLowerCase().trim();
-                        if (timeStr === 'sunset') return 'sunset';
-                        const d = new Date(date);
-                        if (timeStr === 'noon') {
-                            d.setHours(12, 0, 0, 0);
+
+                const maxRetries = 10;
+                const retryDelay = 1000; // 1 second
+
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(`Cal Sailing API request failed: ${response.statusText} (Attempt ${attempt})`);
+                        
+                        const rawText = await response.text();
+                        const jsonString = rawText.replace(/<pre.*?>|<\/pre>/g, '');
+                        const responseData = JSON.parse(jsonString);
+                        const clubData = responseData.data;
+
+                        if (!clubData) {
+                            throw new Error("Malformed club status JSON: 'data' property is missing.");
+                        }
+
+                        const parseClubTime = (timeStr) => {
+                            if (!timeStr) return null;
+                            timeStr = timeStr.toLowerCase().trim();
+                            if (timeStr === 'sunset') return 'sunset';
+                            const d = new Date(date);
+                            if (timeStr === 'noon') {
+                                d.setHours(12, 0, 0, 0);
+                                return d;
+                            }
+                            const pm = timeStr.includes('pm');
+                            const parts = timeStr.replace(/am|pm/i, '').trim().split(':');
+                            let hours = parseInt(parts[0], 10);
+                            const minutes = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+                            if (isNaN(hours) || isNaN(minutes)) return null;
+                            if (pm && hours < 12) hours += 12;
+                            else if (!pm && hours === 12) hours = 0;
+                            d.setHours(hours, minutes, 0, 0);
                             return d;
+                        };
+                        
+                        const isClosed = clubData.clubclosed === true || clubData.clubclosed === 'true';
+                        if (isClosed) {
+                            return { isClosed: true, alertMessage: 'Club Closed Due To Tide' };
                         }
-                        const pm = timeStr.includes('pm');
-                        const parts = timeStr.replace(/am|pm/i, '').trim().split(':');
-                        let hours = parseInt(parts[0], 10);
-                        const minutes = parts.length > 1 ? parseInt(parts[1], 10) : 0;
-                        if (isNaN(hours) || isNaN(minutes)) return null;
-                        if (pm && hours < 12) hours += 12;
-                        else if (!pm && hours === 12) hours = 0;
-                        d.setHours(hours, minutes, 0, 0);
-                        return d;
-                    };
-                    const isClosed = clubData.clubclosed === true || clubData.clubclosed === 'true';
-                    if (isClosed) {
-                        return { isClosed: true, alertMessage: 'Club Closed Due To Tide' };
-                    }
-                    const openTime = parseClubTime(clubData.opentime);
-                    const dockTime = parseClubTime(clubData.docktime);
-                    let midDayDockTime = null;
-                    let midDayOpenTime = null;
-                    const alerts = new Set();
-                    if (clubData.restriction) {
-                        if (clubData.restriction.toUpperCase().includes('EARLY CLOSE')) alerts.add('Early Close Due To Tide');
-                        if (clubData.restriction.toUpperCase().includes('LATE OPEN')) alerts.add('Late Open Due To Tide');
-                    }
-                    if (clubData.middayclosetext && clubData.middayclosetext !== 'null') {
-                        alerts.add('Mid-Day Closure Due To Tide');
-                        const times = clubData.middayclosetext.match(/(\d{1,2}:\d{2}\s*(am|pm))/gi);
-                        if (times && times.length >= 2) {
-                            midDayDockTime = parseClubTime(times[0]);
-                            midDayOpenTime = parseClubTime(times[1]);
+
+                        const openTime = parseClubTime(clubData.opentime);
+                        const dockTime = parseClubTime(clubData.docktime);
+                        let midDayDockTime = null;
+                        let midDayOpenTime = null;
+                        const alerts = new Set();
+                        
+                        if (clubData.restriction) {
+                            if (clubData.restriction.toUpperCase().includes('EARLY CLOSE')) alerts.add('Early Close Due To Tide');
+                            if (clubData.restriction.toUpperCase().includes('LATE OPEN')) alerts.add('Late Open Due To Tide');
+                        }
+
+                        if (clubData.middayclosetext && clubData.middayclosetext !== 'null') {
+                            alerts.add('Mid-Day Closure Due To Tide');
+                            const times = clubData.middayclosetext.match(/(\d{1,2}:\d{2}\s*(am|pm))/gi);
+                            if (times && times.length >= 2) {
+                                midDayDockTime = parseClubTime(times[0]);
+                                midDayOpenTime = parseClubTime(times[1]);
+                            }
+                        }
+
+                        const alertMessage = Array.from(alerts).join(' & ');
+
+                        return { isClosed: false, openTime, dockTime, midDayDockTime, midDayOpenTime, alertMessage };
+
+                    } catch (error) {
+                        console.error(`Failed to fetch or parse club status on attempt ${attempt}:`, error);
+                        if (attempt < maxRetries) {
+                            await new Promise(resolve => setTimeout(resolve, retryDelay));
+                        } else {
+                            console.error(`All ${maxRetries} attempts to fetch club status failed.`);
+                            return { isClosed: true, alertMessage: 'Could not load club status' };
                         }
                     }
-                    const alertMessage = Array.from(alerts).join(' & ');
-                    return { isClosed: false, openTime, dockTime, midDayDockTime, midDayOpenTime, alertMessage };
-                } catch (error) {
-                    console.error("Failed to fetch or parse club status:", error);
-                    return { isClosed: true, alertMessage: 'Could not load club status' };
                 }
+                return { isClosed: true, alertMessage: 'Could not load club status' };
             }
 
             async function drawChart() {
@@ -723,8 +743,9 @@ font-size:1.75rem!important;
                 const allExtremes = findTideExtremes(allTidesData);
                 const tideEvents = allExtremes.filter(event => event.time >= startOfDay && event.time < endOfDay);
                 
-                // Get colors from CSS variables
-                const computedStyles = getComputedStyle(document.documentElement);
+                const widgetContainer = document.querySelector('.tide-chart-container');
+                if (!widgetContainer) return;
+                const computedStyles = getComputedStyle(widgetContainer);
                 const nightColor = computedStyles.getPropertyValue('--color-chart-night').trim();
                 const dayColor = computedStyles.getPropertyValue('--color-chart-day').trim();
                 const openOverlayColor = computedStyles.getPropertyValue('--color-chart-open-overlay').trim();
@@ -897,7 +918,9 @@ font-size:1.75rem!important;
                     const a = chartDataForUpdate[index - 1], b = chartDataForUpdate[index];
                     const currentDataPoint = !a ? b : !b ? a : (now - a.time > b.time - now) ? b : a;
                     if (currentDataPoint) {
-                         const computedStyles = getComputedStyle(document.documentElement);
+                         const widgetContainer = document.querySelector('.tide-chart-container');
+                         if (!widgetContainer) return;
+                         const computedStyles = getComputedStyle(widgetContainer);
                          const nowIndicatorColor = computedStyles.getPropertyValue('--color-now-indicator').trim();
                          svg.append("circle").attr("class", "now-indicator").attr("cx", xScale(now)).attr("cy", yScale(currentDataPoint.height)).attr("r", 5).attr("fill", nowIndicatorColor).style("pointer-events", "none");
                     }
@@ -905,12 +928,10 @@ font-size:1.75rem!important;
             }
 
             function updateUI() {
-                // ... existing updateUI code ...
                 const isMobile = window.innerWidth < 640;
                 const dateFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
                 if (!isMobile) dateFormatOptions.year = 'numeric';
                 dateDisplay.textContent = currentDate.toLocaleString(undefined, dateFormatOptions);
-
                 const yyyy = currentDate.getFullYear(), mm = String(currentDate.getMonth() + 1).padStart(2, '0'), dd = String(currentDate.getDate()).padStart(2, '0');
                 datePicker.value = `${yyyy}-${mm}-${dd}`;
                 if(countdownInterval) clearInterval(countdownInterval);
@@ -925,7 +946,6 @@ font-size:1.75rem!important;
             }
 
             async function updateNextTideEvent() {
-                // ... existing updateNextTideEvent code ...
                  try {
                     const now = new Date();
                     const [prevTides, currentTides, nextTides, nextNextTides] = await Promise.all([ 
@@ -1014,7 +1034,6 @@ font-size:1.75rem!important;
         });
         /* #end raw */
     </script>
-
 
                     </div><br/><br/>
 
