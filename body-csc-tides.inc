@@ -595,7 +595,7 @@ font-size:1.75rem!important;
         }
     </style>
 
-    <div id="tide-chart-widget-container">
+       <div id="tide-chart-widget-container">
         <div class="widget-header">
             <button id="prev-day" class="nav-button">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -631,10 +631,12 @@ font-size:1.75rem!important;
         
         <div id="events-list"></div>
 
-        <div id="tooltip">
-            <p id="tooltip-time"></p>
-            <p id="tooltip-height"></p>
-        </div>
+    </div>
+
+    <!-- Tooltip is now outside the main container to avoid stacking context issues -->
+    <div id="tide-chart-tooltip" style="display: none;">
+        <p id="tooltip-time"></p>
+        <p id="tooltip-height"></p>
     </div>
 
     <script>
@@ -643,13 +645,21 @@ font-size:1.75rem!important;
             const initialDate = new Date();
             const DANGEROUS_LOW_TIDE = 1.5;
             const chartContainer = d3.select("#chart-container");
-            const tooltip = d3.select("#tooltip");
             const dateDisplay = document.getElementById('current-date');
             const datePicker = document.getElementById('date-picker');
             const nextTideDisplay = document.getElementById('next-tide-event');
             const clubStatusAlert = document.getElementById('club-status-alert');
             const currentTideStatus = document.getElementById('current-tide-status');
             const eventsList = document.getElementById('events-list');
+            
+            // --- Tooltip Handling ---
+            let tooltipNode = document.getElementById('tide-chart-tooltip');
+            if (tooltipNode && tooltipNode.parentElement !== document.body) {
+                document.body.appendChild(tooltipNode);
+            }
+            tooltipNode.style.display = 'block';
+            const tooltip = d3.select("#tide-chart-tooltip");
+            
             let currentDate = new Date(initialDate);
             let countdownInterval = null;
             const tideDataCache = {};
