@@ -601,7 +601,7 @@ font-size:1.75rem!important;
         }
     </style>
 
-       <div id="tide-chart-widget-container">
+        <div id="tide-chart-widget-container">
         <div class="widget-header">
             <button id="prev-day" class="nav-button">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -828,7 +828,11 @@ font-size:1.75rem!important;
                         };
                         
                         const isClosed = clubData.clubclosed === true || clubData.clubclosed === 'true';
-                        if (isClosed) return { isClosed: true, alertMessage: 'Club Closed Due To Tide' };
+                        
+                        // Also parse sunset time from this source
+                        const sunsetTime = parseClubTime(clubData.sunsettime);
+
+                        if (isClosed) return { isClosed: true, alertMessage: 'Club Closed Due To Tide', sunsetTime };
 
                         const openTime = parseClubTime(clubData.opentime);
                         const dockTime = parseClubTime(clubData.docktime);
@@ -850,7 +854,7 @@ font-size:1.75rem!important;
                             }
                         }
                         const alertMessage = Array.from(alerts).join(' & ');
-                        return { isClosed: false, openTime, dockTime, midDayDockTime, midDayOpenTime, alertMessage };
+                        return { isClosed: false, openTime, dockTime, midDayDockTime, midDayOpenTime, alertMessage, sunsetTime };
 
                     } catch (error) {
                         console.error(`Failed to fetch or parse club status on attempt ${attempt}:`, error);
@@ -858,11 +862,11 @@ font-size:1.75rem!important;
                             await new Promise(resolve => setTimeout(resolve, retryDelay));
                         } else {
                             console.error(`All ${maxRetries} attempts to fetch club status failed.`);
-                            return { isClosed: true, alertMessage: 'Could not load club status' };
+                            return { isClosed: true, alertMessage: 'Could not load club status', sunsetTime: null };
                         }
                     }
                 }
-                return { isClosed: true, alertMessage: 'Could not load club status' };
+                return { isClosed: true, alertMessage: 'Could not load club status', sunsetTime: null };
             }
 
             async function drawChart() {
@@ -919,9 +923,14 @@ font-size:1.75rem!important;
                 const curve = d3.curveBasis;
                 const areaGenerator = (y0) => d3.area().x(d => xScale(d.time)).y0(y0).y1(d => yScale(d.height)).curve(curve);
                 const lineGenerator = d3.line().x(d => xScale(d.time)).y(d => yScale(d.height)).curve(curve);
-                const { sunrise: sunriseTime, sunset: sunsetTime } = calculateSunriseSunset(currentDate, LOCATION_LAT, LOCATION_LNG);
+                
+                const { sunrise: calculatedSunrise } = calculateSunriseSunset(currentDate, LOCATION_LAT, LOCATION_LNG);
+                const sunriseTime = calculatedSunrise; // We still calculate sunrise
+                const sunsetTime = clubStatus.sunsetTime || calculateSunriseSunset(currentDate, LOCATION_LAT, LOCATION_LNG).sunset;
+
                 if (clubStatus.dockTime === 'sunset') clubStatus.dockTime = sunsetTime;
                 if (clubStatus.midDayDockTime === 'sunset') clubStatus.midDayDockTime = sunsetTime;
+
                 const overlap = 1;
                 svg.append("rect").attr("x", xScale(startOfDay)).attr("width", (xScale(sunriseTime) - xScale(startOfDay)) + overlap).attr("height", height).attr("fill", nightColor);
                 svg.append("rect").attr("x", xScale(sunriseTime)).attr("width", (xScale(sunsetTime) - xScale(sunriseTime)) + overlap).attr("height", height).attr("fill", dayColor);
