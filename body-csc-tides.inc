@@ -338,7 +338,7 @@ font-size:1.75rem!important;
 
            <script src="https://d3js.org/d3.v7.min.js"></script>
         
-  <style>
+ <style>
         /* --- SCOPED CSS RESET --- */
         #tide-chart-widget-container * {
             box-sizing: border-box;
@@ -408,7 +408,6 @@ font-size:1.75rem!important;
             /* Base widget styles */
             background-color: var(--color-page-bg);
             color: var(--color-text-primary);
-            transition: background-color 0.3s, color 0.3s;
             touch-action: manipulation;
             border-radius: 1rem; /* rounded-2xl */
             width: 100%;
@@ -566,7 +565,7 @@ font-size:1.75rem!important;
             transition: opacity 0.2s;
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
-            font-family: 'Inter', sans-serif; /* <-- FIX: Added Font Family */
+            font-family: 'Inter', sans-serif;
             font-size: 0.875rem;
             border-radius: 0.5rem;
             padding: 0.5rem 0.75rem;
