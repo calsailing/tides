@@ -794,7 +794,6 @@ font-size:1.75rem!important;
             async function fetchClubStatus(date) {
                 const yyyymmdd = date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
                 const url = `https://www.cal-sailing.org/index.php?option=com_csctides&view=gettidedatalist&task=gettidedatalist&tmpl=component&output=json&tidedate=${yyyymmdd}`;
-                // const url = `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`;
                 const maxRetries = 10;
                 const retryDelay = 1000;
 
