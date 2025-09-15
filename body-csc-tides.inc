@@ -150,9 +150,8 @@ font-size:1.75rem!important;
 
           #if $getattr($stat_tile_check, $get_custom_data_binding_obs_key($skin_obs)).has_data
             #set global $partial_obs = $skin_obs
-           #if $context != "day"
             #include "includes/stat-tile.inc"
-           #end if
+
 
 
           #end if
